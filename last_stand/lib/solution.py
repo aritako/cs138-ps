@@ -1,7 +1,6 @@
 import os
 import numpy as np
-from mpmath import mp, matrix
-mp.dps = 50
+
 FOLDER_PATH = 'defense_plans'
 # FOLDER_CATEGORIES = [
 #   'balanced',
@@ -15,7 +14,7 @@ FOLDER_PATH = 'defense_plans'
 #   'tres',
 #   'uno',
 # ]
-FOLDER_CATEGORIES = ['balanced']
+FOLDER_CATEGORIES = ['classic']
 NUM_TEST_CASES = 25
 DAMAGE_MULTIPLIERS = {
   "G" : [0, 4, 0],
@@ -27,87 +26,123 @@ DAMAGE_MULTIPLIERS = {
 def main():
   for category in FOLDER_CATEGORIES:
     category_path = os.path.join(FOLDER_PATH, category)
+    print("=====================================")
+    print("DEFENSE NAME:", category)
+    print("=====================================")
     for i in range(0, NUM_TEST_CASES):
       # Assumption is num_test_case <= 25.
       file_name = f'0{i + 1}.txt' if len(str(i)) < 2 and i != 9 else f'{i + 1}.txt'
       file_path = os.path.join(category_path, file_name)
-      
+
       if os.path.exists(file_path):
         with open(file_path, 'r') as file:
           defense_plan = file.read()
           print("Defense Plan Number: ", i + 1)
           protect_the_brains = defend_from_zombies(defense_plan)
-          print(f"Solution: {protect_the_brains}\n")
           print("--------------------")
 
 def defend_from_zombies(defense_plan):
   k, symbols, n, total = defense_plan.split('\n')
   damage_vector = compute_damage_vector(symbols)
-  damage_matrix = build_damage_matrix(damage_vector, int(n))
+  # damage_matrix = build_damage_matrix(damage_vector, int(n))
   damage_total = [int(x) for x in total.split(' ')]
-  solution = solve_damage_solution(damage_matrix, damage_total)
-  [print(x) for x in solution]
+  # lower_diagonal, main_diagonal, upper_diagonal = generate_diagonals(damage_vector, int(n))
+  # print(lower_diagonal, main_diagonal, upper_diagonal)
+  solution = compute_solution(damage_vector, damage_total, int(n))
+  # [print(x) for x in solution]
   # print(damage_matrix)
   # print(damage_total)
   # print(solution)
   return [x for x in solution]
 
-def solve_damage_solution(A, t):
-  # Using mpmath's 'matrix' to solve the system of equations
-  A = matrix(A)
-  t = matrix(t)
-  # Step 1: Perform Cholesky decomposition (A = L * L^T)
-  L = mp.cholesky(A)
+def generate_diagonals(damage_vector, n):
+  lower_diagonal = [damage_vector[0] for _ in range(n - 1)] if n > 1 else [0]
+  main_diagonal = [damage_vector[1] for _ in range(n)]
+  upper_diagonal = [damage_vector[2] for _ in range(n - 1)] if n > 1 else [0]
+  print("")
+  return lower_diagonal, main_diagonal, upper_diagonal
+
+def compute_solution(damage_vector, b, n):
+  print("Damage Vector: ", damage_vector)
+  if n == 1:
+    print("Special case: Single element matrix")
+    print("Solution: ", round(b[0] / damage_vector[1]))
+    return [round(b[0] / damage_vector[1])]
+  if damage_vector[0] == 0 and damage_vector[2] == 0 and damage_vector[1] != 0:
+    print("Special case: Zero adjacent diagonals")
+    solution = round(b[0] / damage_vector[1]) 
+    print("Solution: ", solution)
+
+    return [solution] * n
+  if damage_vector[0] == damage_vector[1] == damage_vector[2]:
+    print("Special case: Equal diagonals")
+    if damage_vector[0] == 0:
+      print("Special case: All zero diagonals")
+      return [0] * n
+    return solve_equal_diagonals(n, damage_vector[1], damage_vector[0], b)
+  # Forward elimination
+  for i in range(n - 1):
+    L = damage_vector[0] / damage_vector[1]   # Compute the multiplier
+    damage_vector[1] -= L * damage_vector[2]  # Update the next diagonal element
+    b[i + 1] -= L * b[i]  # Update the right-hand side vector
   
-  # Step 2: Solve L * y = b using forward substitution
-  y = mp.lu_solve(L, t)
-  
-  # Step 3: Solve L^T * x = y using backward substitution
-  x = mp.lu_solve(L.T, y)
-  
+  x = [0] * n
+  x[n - 1] = b[n - 1] / damage_vector[1]  # Solve for the last variable
+  for i in range(n - 2, -1, -1):
+      x[i] = (b[i] - damage_vector[2] * x[i + 1]) / damage_vector[1]  # Solve for the rest
   return x
 
-# def solve_damage_solution(damage_matrix, damage_total):
-#   # Using mpmath's 'matrix' to solve the system of equations
-#   A = np.array(damage_matrix, dtype=np.float64)
-#   t = np.array(damage_total, dtype=np.float64)
-#   try:
-#       damage_solution = np.linalg.solve(A, t)
-#   except Exception as e:
-#       print(f"An error occurred during matrix solving: {e}")
-#       return None
-#   return damage_solution
+def solve_equal_diagonals(n, d, s, b, epsilon=1e-10):
+    # perturbation god i hope this works
+
+    alpha = [0] * n
+    beta = [0] * n 
+
+    alpha[0] = d
+    if abs(alpha[0]) < epsilon:
+        alpha[0] += epsilon
+    
+    beta[0] = b[0] / alpha[0]
+
+    for i in range(1, n):
+        alpha[i] = d - (s ** 2) / alpha[i - 1]
+        if abs(alpha[i]) < epsilon:
+            alpha[i] += epsilon
+        
+        beta[i] = (b[i] - s * beta[i - 1]) / alpha[i]
+
+    x = [0] * n
+    x[n - 1] = beta[n - 1]
+
+    for i in range(n - 2, -1, -1):
+        x[i] = round(beta[i] - (s / alpha[i]) * x[i + 1])
+    return x
 
 def compute_damage_vector(symbols):
   damage_vector = [0, 0, 0]
-  for i in symbols:
-    if i == 'W':
+  last_W_index = symbols.rfind('W')
+  for idx, i in enumerate(symbols):
+    if i == 'W' and idx != last_W_index:
+      continue
+    if i == 'W' and idx == last_W_index:
       damage_vector[1] *= DAMAGE_MULTIPLIERS[i][1]
     else:
       damage_vector[0] += DAMAGE_MULTIPLIERS[i][0]
       damage_vector[1] += DAMAGE_MULTIPLIERS[i][1]
       damage_vector[2] += DAMAGE_MULTIPLIERS[i][2]
-  for i in range(3):
-    damage_vector[i] = mp.mpf(damage_vector[i])
+  # for i in range(3):
+  #   damage_vector[i] = mp.mpf(damage_vector[i])
   return damage_vector
 
 def build_damage_matrix(damage_vector, n):
   damage_matrix = [[0 for _ in range(n)] for _ in range(n)]
-  if n == 1:
-    damage_matrix[0][0] = damage_vector[1]
-    return damage_matrix
   for i in range(n):
     damage_matrix[i][i] = damage_vector[1]
-    if i == 0:
-      damage_matrix[i][i + 1] = damage_vector[2]
-    elif i == n - 1:
+    if i > 0:
       damage_matrix[i][i - 1] = damage_vector[0]
-    else:
-      damage_matrix[i][i - 1] = damage_vector[0]
+    if i < n - 1:
       damage_matrix[i][i + 1] = damage_vector[2]
-  for i in range(n):
-    for j in range(n):
-      damage_matrix[i][j] = mp.mpf(damage_matrix[i][j])
   return damage_matrix
+
 
 main()
