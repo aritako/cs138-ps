@@ -47,12 +47,13 @@ def defend_from_zombies(defense_plan, category, file_name):
   damage_vector = compute_damage_vector(symbols)
   damage_total = [int(x) for x in total.split(' ')]
   solution = compute_solution(damage_vector, damage_total, int(n))
-  write_to_file(n, solution, category, file_name)
+  round_solution = [round(x) for x in solution]
+  write_to_file(n, round_solution, category, file_name)
   # [print(x) for x in solution]
   # print(damage_matrix)
   # print(damage_total)
   # print(solution)
-  return solution
+  return round_solution
 
 def write_to_file(n, solution, folder_name, file_name):
   base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -121,7 +122,7 @@ def solve_equal_diagonals(n, d, s, b, epsilon=1e-10):
     x[n - 1] = beta[n - 1]
 
     for i in range(n - 2, -1, -1):
-        x[i] = round(beta[i] - (s / alpha[i]) * x[i + 1])
+        x[i] = beta[i] - (s / alpha[i]) * x[i + 1]
     return x
 
 def compute_damage_vector(symbols):
