@@ -2,19 +2,19 @@ import os
 import numpy as np
 
 FOLDER_PATH = 'defense_plans'
-# FOLDER_CATEGORIES = [
-#   'balanced',
-#   'classic',
-#   'cold',
-#   'hot',
-#   'short',
-#   'singko',
-#   'straight',
-#   'smol',
-#   'tres',
-#   'uno',
-# ]
-FOLDER_CATEGORIES = ['classic']
+FOLDER_CATEGORIES = [
+  'balanced',
+  'classic',
+  'cold',
+  'hot',
+  'short',
+  'singko',
+  'straight',
+  'smol',
+  'tres',
+  'uno',
+]
+# FOLDER_CATEGORIES = ['classic']
 NUM_TEST_CASES = 25
 DAMAGE_MULTIPLIERS = {
   "G" : [0, 4, 0],
@@ -38,26 +38,35 @@ def main():
         with open(file_path, 'r') as file:
           defense_plan = file.read()
           print("Defense Plan Number: ", i + 1)
-          protect_the_brains = defend_from_zombies(defense_plan)
+          protect_the_brains = defend_from_zombies(defense_plan, category, file_name)
+          print("Solution: ", protect_the_brains)
           print("--------------------")
 
-def defend_from_zombies(defense_plan):
+def defend_from_zombies(defense_plan, category, file_name):
   k, symbols, n, total = defense_plan.split('\n')
   damage_vector = compute_damage_vector(symbols)
   damage_total = [int(x) for x in total.split(' ')]
   solution = compute_solution(damage_vector, damage_total, int(n))
+  write_to_file(n, solution, category, file_name)
   # [print(x) for x in solution]
   # print(damage_matrix)
   # print(damage_total)
   # print(solution)
-  return [x for x in solution]
+  return solution
 
-def generate_diagonals(damage_vector, n):
-  lower_diagonal = [damage_vector[0] for _ in range(n - 1)] if n > 1 else [0]
-  main_diagonal = [damage_vector[1] for _ in range(n)]
-  upper_diagonal = [damage_vector[2] for _ in range(n - 1)] if n > 1 else [0]
-  print("")
-  return lower_diagonal, main_diagonal, upper_diagonal
+def write_to_file(n, solution, folder_name, file_name):
+  base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+  folder_path = os.path.join(base_dir, folder_name)
+  
+  if not os.path.exists(folder_path):
+      os.makedirs(folder_path)
+  
+  file_path = os.path.join(folder_path, file_name)
+  
+  with open(file_path, 'w') as file:
+      file.write(f"{n}\n")
+      file.write(" ".join(map(str, solution)) + "\n")
 
 def compute_solution(damage_vector, b, n):
   print("Damage Vector: ", damage_vector)
@@ -86,7 +95,7 @@ def compute_solution(damage_vector, b, n):
   x = [0] * n
   x[n - 1] = b[n - 1] / damage_vector[1]  # Solve for the last variable
   for i in range(n - 2, -1, -1):
-      x[i] = (b[i] - damage_vector[2] * x[i + 1]) / damage_vector[1]  # Solve for the rest
+      x[i] = round((b[i] - damage_vector[2] * x[i + 1]) / damage_vector[1])  # Solve for the rest
   return x
 
 def solve_equal_diagonals(n, d, s, b, epsilon=1e-10):
