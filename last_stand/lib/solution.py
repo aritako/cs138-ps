@@ -49,10 +49,6 @@ def defend_from_zombies(defense_plan, category, file_name):
   solution = compute_solution(damage_vector, damage_total, int(n))
   round_solution = [round(x) for x in solution]
   write_to_file(n, round_solution, category, file_name)
-  # [print(x) for x in solution]
-  # print(damage_matrix)
-  # print(damage_total)
-  # print(solution)
   return round_solution
 
 def write_to_file(n, solution, folder_name, file_name):
@@ -137,8 +133,6 @@ def compute_damage_vector(symbols):
       damage_vector[0] += DAMAGE_MULTIPLIERS[i][0]
       damage_vector[1] += DAMAGE_MULTIPLIERS[i][1]
       damage_vector[2] += DAMAGE_MULTIPLIERS[i][2]
-  # for i in range(3):
-  #   damage_vector[i] = mp.mpf(damage_vector[i])
   return damage_vector
 
 main()
