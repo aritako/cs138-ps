@@ -44,10 +44,7 @@ def main():
 def defend_from_zombies(defense_plan):
   k, symbols, n, total = defense_plan.split('\n')
   damage_vector = compute_damage_vector(symbols)
-  # damage_matrix = build_damage_matrix(damage_vector, int(n))
   damage_total = [int(x) for x in total.split(' ')]
-  # lower_diagonal, main_diagonal, upper_diagonal = generate_diagonals(damage_vector, int(n))
-  # print(lower_diagonal, main_diagonal, upper_diagonal)
   solution = compute_solution(damage_vector, damage_total, int(n))
   # [print(x) for x in solution]
   # print(damage_matrix)
@@ -133,16 +130,5 @@ def compute_damage_vector(symbols):
   # for i in range(3):
   #   damage_vector[i] = mp.mpf(damage_vector[i])
   return damage_vector
-
-def build_damage_matrix(damage_vector, n):
-  damage_matrix = [[0 for _ in range(n)] for _ in range(n)]
-  for i in range(n):
-    damage_matrix[i][i] = damage_vector[1]
-    if i > 0:
-      damage_matrix[i][i - 1] = damage_vector[0]
-    if i < n - 1:
-      damage_matrix[i][i + 1] = damage_vector[2]
-  return damage_matrix
-
 
 main()
