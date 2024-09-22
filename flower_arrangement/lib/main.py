@@ -1,17 +1,17 @@
 import os
 import random
-import sys
+import copy
 
 def parse_input(filename):
     garden_dir = os.path.join(os.path.dirname(__file__), '../gardens', filename)
     
     with open(garden_dir, 'r') as f:
         n = int(f.readline().strip())
-        Z = []
+        matrix = []
         for _ in range(n):
             row = list(map(int, f.readline().strip().split()))
-            Z.append(row)
-    return Z
+            matrix.append(row)
+    return matrix
 
 def write_matrix_to_file(matrix, filename):
     garden_dir = os.path.join(os.path.dirname(__file__), '../gardens', filename)
@@ -21,15 +21,15 @@ def write_matrix_to_file(matrix, filename):
         for row in matrix:
             f.write(" ".join(map(str, row)) + "\n")
 
-def matrix_vector_multiply(Z, s):
-    b = []
-    for row in Z:
+def matrix_vector_multiply(matrix, s):
+    product = []
+    for row in matrix:
         row_sum = sum([row[j] * s[j] for j in range(len(s))])
-        b.append(row_sum)
-    return b
+        product.append(row_sum)
+    return product
 
-def print_matrix(Z):
-    for row in Z:
+def print_matrix(matrix):
+    for row in matrix:
         print(" ".join(map(str, row)))
 
 def inf_norm(matrix):
@@ -60,41 +60,41 @@ def inverse(matrix):
     return [row[n:] for row in augmented_matrix]
 
 def condition_number(matrix):
-    norm_Z = inf_norm(matrix)
-    Z_inv = inverse(matrix)
-    norm_Z_inv = inf_norm(Z_inv)
+    norm_matrix = inf_norm(matrix)
+    matrix_inv = inverse(matrix)
+    norm_matrix_inv = inf_norm(matrix_inv)
 
-    return norm_Z * norm_Z_inv
+    return norm_matrix * norm_matrix_inv
 
-def gaussian_elimination_with_partial_pivoting(Z, b):
-    n = len(Z)
+def gaussian_elimination_with_partial_pivoting(matrix, b):
+    n = len(matrix)
     
     # Forward elimination with partial pivoting
     for i in range(n):
         # Find the maximum element in the current column to use as a pivot
-        max_row = max(range(i, n), key=lambda k: abs(Z[k][i]))
-        if Z[max_row][i] == 0:
+        max_row = max(range(i, n), key=lambda k: abs(matrix[k][i]))
+        if matrix[max_row][i] == 0:
             raise ValueError("Matrix is singular or nearly singular")
         
         # Swap rows if needed
-        Z[i], Z[max_row] = Z[max_row], Z[i]
+        matrix[i], matrix[max_row] = matrix[max_row], matrix[i]
         b[i], b[max_row] = b[max_row], b[i]
         
         # Normalize the pivot row
-        pivot = Z[i][i]
-        Z[i] = [Z[i][j] / pivot for j in range(n)]
+        pivot = matrix[i][i]
+        matrix[i] = [matrix[i][j] / pivot for j in range(n)]
         b[i] /= pivot
         
         # Eliminate the current column in the rows below
         for k in range(i+1, n):
-            factor = Z[k][i]
-            Z[k] = [Z[k][j] - factor * Z[i][j] for j in range(n)]
+            factor = matrix[k][i]
+            matrix[k] = [matrix[k][j] - factor * matrix[i][j] for j in range(n)]
             b[k] -= factor * b[i]
     
     # Backward substitution
     s_hat = [0] * n
     for i in range(n-1, -1, -1):
-        s_hat[i] = b[i] - sum(Z[i][j] * s_hat[j] for j in range(i+1, n))
+        s_hat[i] = b[i] - sum(matrix[i][j] * s_hat[j] for j in range(i+1, n))
     
     return s_hat
 
@@ -227,58 +227,42 @@ def matrix_subtraction(A, B):
     else:
         raise ValueError("Matrices must have the same dimensions for subtraction.")
 
-# Make sure to define a different s_hat! Right now, s_hat should be equal to s for checking. 
-def process_garden(matrix):
-    Z = matrix
-    n = len(Z)
-
-    print(f"Matrix Z of n {n}:")
-    print_matrix(Z)
-
-    s = [1] * n
-
-    print("\nSolving for b, where Zs = b:")
-    b = matrix_vector_multiply(Z, s)
-    print(b)
-
-    print("\nSolving for s")
-    s_hat = gaussian_elimination_with_partial_pivoting(Z, b)
-    print(s_hat)
-
-    print("\nComputing the inf-norm of delta s = s_hat - s")
-    inf_norm_delta_s = inf_norm(matrix_subtraction(s_hat, s))
-    print(inf_norm_delta_s)
-
-    print("\nComputing the condition number of Z under the inf-norm")
-    Z_condition_number = condition_number(Z)
-    print(Z_condition_number)
-    print('\n')
-
 gardens = ['A.txt', 'B.txt', 'C.txt', 'D.txt', 'E.txt', 'F.txt', 'G.txt', 'H.txt', 'I.txt', 'J.txt']
 
-# The first and second rearrangement's results are located with their respective original matrix results.
-for garden in gardens:
-    Z = parse_input(garden)
-    Z1, Z2 = generate_unique_rearrangements(Z)
+# Z = parse_input('A.txt')
+# print(matrix_vector_multiply(Z, [1, 1, 1]))
+# for garden in gardens:
+#     Z = parse_input(garden)
+#     Z1, Z2 = generate_unique_rearrangements(Z)
     
-    base_filename = garden.split('.')[0]
-    write_matrix_to_file(Z1, f"{base_filename}1.txt")
-    write_matrix_to_file(Z2, f"{base_filename}2.txt")
+#     base_filename = garden.split('.')[0]
+#     write_matrix_to_file(Z1, f"{base_filename}1.txt")
+#     write_matrix_to_file(Z2, f"{base_filename}2.txt")
 
-    log_filename = f"{base_filename}_log.txt"
+#     print(f"Processed {garden} and created rearrangements")
 
-    lib_dir = os.path.join(os.path.dirname(__file__), '../lib', log_filename)
-    with open(lib_dir, 'w') as log_file:
-        # Redirect stdout to the log file
-        original_stdout = sys.stdout
-        sys.stdout = log_file
-        
-        try:
-            process_garden(Z)
-            process_garden(Z1)
-            process_garden(Z2)
-        finally:
-            # Restore stdout
-            sys.stdout = original_stdout
+# Use an absolute path for the gardens directory
+gardens_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'gardens'))
 
-    print(f"Processed {garden} and wrote log to {log_filename}")
+# List the files in the gardens directory
+gardens = [f for f in os.listdir(gardens_dir) if f.endswith('.txt')]
+
+for garden in gardens:
+    garden_path = os.path.join(gardens_dir, garden)
+    Z = parse_input(garden)
+    n = len(Z)
+    s = [1] * n
+    b = matrix_vector_multiply(Z, s)
+
+    Z_copy = copy.deepcopy(Z)
+    b_copy = copy.deepcopy(b)
+    
+    s_hat = gaussian_elimination_with_partial_pivoting(Z_copy, b_copy)
+    inf_norm_delta_s = inf_norm(matrix_subtraction(s, s_hat))
+    Z_condition_number = condition_number(Z)
+    # Append the computed values to the original file
+    with open(garden_path, 'a') as f:
+        f.write(" ".join(map(str, b)) + "\n")
+        f.write(" ".join(map(str, s_hat)) + "\n")
+        f.write(f"{inf_norm_delta_s}\n")
+        f.write(f"{Z_condition_number}")
