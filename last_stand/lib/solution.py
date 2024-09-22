@@ -76,10 +76,10 @@ def compute_solution(damage_vector, b, n):
     return [round(b[0] / damage_vector[1])]
   if damage_vector[0] == 0 and damage_vector[2] == 0 and damage_vector[1] != 0:
     print("Special case: Zero adjacent diagonals")
-    solution = round(b[0] / damage_vector[1]) 
+    solution = [round(b[i] / damage_vector[1]) for i in range(n)]
     print("Solution: ", solution)
 
-    return [solution] * n
+    return solution
   if damage_vector[0] == damage_vector[1] == damage_vector[2]:
     print("Special case: Equal diagonals")
     if damage_vector[0] == 0:
