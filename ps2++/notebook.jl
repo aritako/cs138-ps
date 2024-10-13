@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.46
+# v0.19.47
 
 using Markdown
 using InteractiveUtils
@@ -162,31 +162,33 @@ end
 
 # ╔═╡ 78328023-61d8-420d-94de-5f6f4910b613
 function gen_spline(x::Vector, y::Vector)
-	n_plus_1 = length(x)
-	M = spline_mat(x, y)
-	b = spline_vec(x, y)
-	k = spline_k(M, b)
-	
-	splines = []
-	for i in 1:n_plus_1-1
-		h_i = x[i + 1] - x[i]
-		a = k[i] / (6 * h_i)
-		b = k[i + 1] / (6 * h_i)
-		c = (y[i + 1] / h_i) - (k[i + 1] * h_i / 6)
-		d = (y[i] / h_i) - (k[i] * h_i / 6)
+    n_plus_1 = length(x)
+    M = spline_mat(x, y)
+    b = spline_vec(x, y)
+    k = spline_k(M, b)
 
-		function p_i(x_val)
-			term1 = a * (x[i + 1] - x_val)^3
-			term2 = b * (x_val - x[i])^3
-			term3 = c * (x_val - x[i])
-			term4 = d * (x[i + 1] - x_val)
-			return term1 + term2 + term3 + term4
-		end
+    splines = []
+    
+    for i in 1:n_plus_1-1
+        h_i = x[i + 1] - x[i]
+        
+        a = k[i] / (6 * h_i)
+        b_coef = k[i + 1] / (6 * h_i)
+        c = (y[i + 1] / h_i) - (k[i + 1] * h_i / 6)
+        d = (y[i] / h_i) - (k[i] * h_i / 6)
 
-		push!(splines, p_i)
-	end
+        function p_i(x_val)
+            term1 = a * (x[i + 1] - x_val)^3
+            term2 = b_coef * (x_val - x[i])^3
+            term3 = c * (x_val - x[i])
+            term4 = d * (x[i + 1] - x_val)
+            return term1 + term2 + term3 + term4
+        end
 
-	return splines
+        push!(splines, p_i)
+    end
+
+    return splines
 end
 
 
@@ -209,7 +211,7 @@ begin
 
 	scatter!(ax_wb, x_vals, y_vals, color=:blue)
 	for i in 1:length(splines)
-	    interval_x = [x_knots[i] + 0.1 * j for j in 1:9]
+	    interval_x = [x_knots[i] + 0.1 * j for j in 0:9]
 	    interval_y = [splines[i](x_val) for x_val in interval_x]
 	    
 		scatter!(ax_wb, interval_x, interval_y, color=:red)
@@ -234,21 +236,29 @@ begin
 	y_knots_param = Vector([trajectory(i) for i in x_knots_param])
 	splines_param = gen_spline(x_knots_param, y_knots_param)
 
-	# Original f(x)
-	x_vals_param = range(1, 8, length=100)
-	y_vals_param = [trajectory(x) for x in x_vals_param]
-	fig_wb_param = Figure()
-	ax_wb_param = Axis(fig_wb_param[1,1], title = "White Bird's Ambitious Request (with Params)", xlabel = "x", ylabel = "f(x)")
+    ip_decimal = [i * (1 / (ip + 1)) for i in 1:ip]
 
-	scatter!(ax_wb_param, x_vals_param, y_vals_param, color=:blue)
-	for i in 1:length(splines_param)
-	    interval_x_param = [x_knots_param[i] + 0.1 * j for j in 1:ip]
-	    interval_y_param = [splines_param[i](x_val) for x_val in interval_x_param]
-	    
-		scatter!(ax_wb_param, interval_x_param, interval_y_param, color=:red)
-	end
-	save("spline_param.png", fig_wb_param)
-	fig_wb_param
+    px_param = Float64[]
+    for i in 1:k-1
+        interval_step = (x_knots_param[i+1] - x_knots_param[i]) / (ip + 1)
+        for j in 1:ip
+            push!(px_param, x_knots_param[i] + j * interval_step)
+        end
+    end
+    py_param = [splines_param[floor(Int, i)](i) for i in px_param]
+
+	fig_wb_param = Figure()
+    ax_wb_param = Axis(fig_wb_param[1, 1], title="White Bird's Request (with Parametrization)", xlabel="x", ylabel="f(x)")
+	
+
+	# Points at Whole Numbers
+    scatter!(ax_wb_param, x_knots_param, y_knots_param, color=:red)
+    # Interval Points
+    scatter!(ax_wb_param, px_param, py_param, color=:red)
+	# Original f(x)
+    scatter!(ax_wb_param, x_vals, y_vals, color=:blue)
+    # save("spline_param.png", fig_wb_param)
+    fig_wb_param
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
