@@ -236,16 +236,17 @@ begin
 	y_knots_param = Vector([trajectory(i) for i in x_knots_param])
 	splines_param = gen_spline(x_knots_param, y_knots_param)
 
-    ip_decimal = [i * (1 / (ip + 1)) for i in 1:ip]
-
     px_param = Float64[]
+    py_param = Float64[]
+
     for i in 1:k-1
         interval_step = (x_knots_param[i+1] - x_knots_param[i]) / (ip + 1)
         for j in 1:ip
-            push!(px_param, x_knots_param[i] + j * interval_step)
+            x_val = x_knots_param[i] + j * interval_step
+            push!(px_param, x_val)
+            push!(py_param, splines_param[i](x_val))
         end
     end
-    py_param = [splines_param[floor(Int, i)](i) for i in px_param]
 
 	fig_wb_param = Figure()
     ax_wb_param = Axis(fig_wb_param[1, 1], title="White Bird's Request (with Parametrization)", xlabel="x", ylabel="f(x)")
