@@ -104,7 +104,7 @@ md"```math
 # ╔═╡ c8e55800-6d47-41dd-998d-76420d6d3254
 md"```math
 My = \
-\begin{matrix}
+\begin{bmatrix}
 1 & 0 & 0 & 0 & ... & 0 & 0  \\
 2 + h & -4-6h^2 & 2-h & 0 &... & 0 & 0 \\
 0 & 2 + h & -4-6h^2 & 2-h & ... & 0 & 0 \\
@@ -112,11 +112,8 @@ My = \
 \vdots & \vdots & \vdots & \vdots & \ddots & \vdots & \vdots \\
 0 & 0 & 0 & 0 & ... & -4-6h^2 & 2-h \\
 0 & 0 & 0 & 0 & ... & 0 & 1 \\
-\end{matrix}
-\
-*
-\
-\begin{matrix}
+\end{bmatrix}
+\begin{bmatrix}
 y_1 \\
 y_2 \\
 y_3 \\
@@ -124,11 +121,9 @@ y_4 \\
 \vdots \\
 y_{n-1} \\
 y_n 
-\end{matrix}
-\
+\end{bmatrix}
 =
-\
-\begin{matrix}
+\begin{bmatrix}
 1 \\
 16h^2 \\
 16h^2 \\
@@ -136,7 +131,7 @@ y_n
 \vdots \\
 16h^2 \\
 10
-\end{matrix}
+\end{bmatrix}
 ```"
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
