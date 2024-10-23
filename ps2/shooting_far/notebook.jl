@@ -4,6 +4,16 @@
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local iv = try Base.loaded_modules[Base.PkgId(Base.UUID("6e696c72-6542-2067-7265-42206c756150"), "AbstractPlutoDingetjes")].Bonds.initial_value catch; b -> missing; end
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : iv(el)
+        el
+    end
+end
+
 # ╔═╡ 3a118020-8fb6-11ef-00cd-0d0324cb9013
 begin
 	using CairoMakie
@@ -11,6 +21,123 @@ begin
 	using PlutoUI
 end
 
+# ╔═╡ fe280272-f067-4734-b28a-1e865d5e5ed3
+function f(x, y::Vector)
+    y1_prime = y[2]
+    y2_prime = y[2] + 3 * y[1] + 8
+    return [y1_prime, y2_prime]
+end
+
+# ╔═╡ 2482ab2a-bd06-4f1e-93b8-f50df7148b76
+function rk4(f, x0, y0::Vector, h, iters)
+	res = [(x0, y0)]
+	for _ in 1:iters
+		x, y = res[end]
+		k1 = f(x, y)
+        k2 = f(x + h / 2, y + (h/2) * k1)
+        k3 = f(x + h / 2, y + (h/2) * k2)
+        k4 = f(x + h, y + h * k3)
+
+		x_new = x + h
+		y_new = y + h / 6 * (k1 + 2*k2 + 2*k3 + k4)
+
+		push!(res, (x_new, y_new))
+	end
+	return res
+end
+
+# ╔═╡ 8f333101-09f0-46b3-942c-4ed1663929aa
+function shooting(f, x0, y0::Vector, h, iters)
+	shooting_figure = Figure()
+	shooting_axis = Axis(
+		shooting_figure[1,1],
+		title = "Shooting Method with y'_0 = $(y0[2])",
+		xlabel = "x",
+		ylabel = "y",
+	)
+	points = rk4(f, x0, y0, h, iters)
+	x_values = [p[1] for p in points]
+	y_values = [p[2][1] for p in points]
+	println(points)
+	scatter!(shooting_axis, x_values, y_values, colormap = :dense)
+	return shooting_figure
+end
+
+# ╔═╡ 1735dcf8-5886-4bb8-9286-5da1e07b7e3f
+@bind y′0 PlutoUI.Slider(-0.45:0.001:1,show_value = true)
+
+# ╔═╡ cd30d919-d010-4220-b186-5a9e6804fc4a
+begin
+	x0 = 0.0
+	y0 = [1, float(y′0)]
+	h = 0.05
+	iters = 20
+	shooting_graph = shooting(f, x0, y0, h, iters)
+	# save("shooting.png",shooting_graph)
+	shooting_graph
+end
+
+# ╔═╡ f6a2f754-ab46-4781-8138-67990e84245d
+md"``We \ will \ begin \ our \ solution \ for \ the \ FDA \ Method.``"
+
+
+# ╔═╡ 9d8ef13b-6920-41b8-bee5-5871f82869a2
+md"```math
+y'' = y' + 3y + 8
+```"
+
+# ╔═╡ 17952816-95e9-49e8-8dce-b4b5d7495428
+md"```math
+\frac{y_{i-1} - 2y_i + y_{i+1}}{h^2} = \frac{y_{i+1}-y_{i-1}}{2h} + 3y_i + 8
+```"
+
+# ╔═╡ 2fe86d14-945b-4d59-befa-d12b8631b79a
+md"```math
+2y_{i-1} - 4y_i + 2_{i+1} = hy_{i+1} - hy_{i-1} + 6h^2y_i + 16h^2
+```"
+
+# ╔═╡ 3c40817e-aaf2-4e85-956c-479f3582d82e
+md"```math
+(2+h)y_{i-1} + (-4-6h^2)y_i + (2-h)y_{i+1} - 16h^2 = 0
+```"
+
+# ╔═╡ c8e55800-6d47-41dd-998d-76420d6d3254
+md"```math
+My = \
+\begin{matrix}
+1 & 0 & 0 & 0 & ... & 0 & 0  \\
+2 + h & -4-6h^2 & 2-h & 0 &... & 0 & 0 \\
+0 & 2 + h & -4-6h^2 & 2-h & ... & 0 & 0 \\
+0 & 0 & 2 + h & -4-6h^2  & ... & 0 & 0 \\
+\vdots & \vdots & \vdots & \vdots & \ddots & \vdots & \vdots \\
+0 & 0 & 0 & 0 & ... & -4-6h^2 & 2-h \\
+0 & 0 & 0 & 0 & ... & 0 & 1 \\
+\end{matrix}
+\
+*
+\
+\begin{matrix}
+y_1 \\
+y_2 \\
+y_3 \\
+y_4 \\
+\vdots \\
+y_{n-1} \\
+y_n 
+\end{matrix}
+\
+=
+\
+\begin{matrix}
+1 \\
+16h^2 \\
+16h^2 \\
+16h^2 \\
+\vdots \\
+16h^2 \\
+10
+\end{matrix}
+```"
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -1509,5 +1636,16 @@ version = "3.6.0+0"
 
 # ╔═╡ Cell order:
 # ╠═3a118020-8fb6-11ef-00cd-0d0324cb9013
+# ╠═fe280272-f067-4734-b28a-1e865d5e5ed3
+# ╠═2482ab2a-bd06-4f1e-93b8-f50df7148b76
+# ╠═8f333101-09f0-46b3-942c-4ed1663929aa
+# ╠═1735dcf8-5886-4bb8-9286-5da1e07b7e3f
+# ╠═cd30d919-d010-4220-b186-5a9e6804fc4a
+# ╠═f6a2f754-ab46-4781-8138-67990e84245d
+# ╠═9d8ef13b-6920-41b8-bee5-5871f82869a2
+# ╠═17952816-95e9-49e8-8dce-b4b5d7495428
+# ╠═2fe86d14-945b-4d59-befa-d12b8631b79a
+# ╠═3c40817e-aaf2-4e85-956c-479f3582d82e
+# ╠═c8e55800-6d47-41dd-998d-76420d6d3254
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

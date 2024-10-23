@@ -9,7 +9,7 @@ def second_equation(w_1, w_3):
 def third_equation(w_1, w_2):
     return -(w_1*math.e**-16) - (w_2*math.e**-4) + 1
 
-def jacobi_method(iterations):
+def gauss_seidel(iterations):
     initial_guess = [1, 1, 1]
     w_1, w_2, w_3 = initial_guess
     for i in range(iterations):
@@ -23,4 +23,4 @@ def jacobi_method(iterations):
         print("-------------------")
     return w_1, w_2, w_3
 
-jacobi_method(3)
+gauss_seidel(5)
