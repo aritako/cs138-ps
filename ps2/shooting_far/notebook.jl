@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.47
+# v0.20.0
 
 using Markdown
 using InteractiveUtils
@@ -134,6 +134,262 @@ y_n
 \end{bmatrix}
 ```"
 
+# ╔═╡ 114f55a8-2f59-4c39-87ab-f9b872ee0084
+function fda_M(m::Int)
+	h = 1/m
+	
+	# Create an m x m zero matrix
+	M = zeros(m, m)
+	M[1,1] = M[m,m] = 1
+
+	# Fill the matrix for interior points
+	for i in 2:m-1
+		M[i, i-1] = 2 + h
+		M[i, i] = -4 - 6 * h^2
+		M[i, i+1] = 2 - h
+	end
+
+	return M
+end
+
+# ╔═╡ 500d80aa-d68d-4be7-ac14-8fe45fb2fbe5
+function fda_b(m::Int)
+	h = 1/m
+	b = zeros(m)
+
+	# Fill the vector for interior points
+	for i in 2:m-1
+		b[i] = 16 * h^2
+	end
+
+	b[1] = 1
+	b[m] = 10
+
+	return b
+end
+
+# ╔═╡ 19e9313a-ed74-4676-a069-39cebe3f3096
+function fda(m::Int)
+	M = fda_M(m)
+	b = fda_b(m)
+
+	x = 0:1/(m-1):1
+	y = M \ b
+
+	fig = Figure()
+	ax = Axis(fig[1, 1],
+		title="Finite Difference Approximation Trajectory",
+		xlabel="Distance (x)",
+		ylabel="Height (y)")
+
+	scatter!(ax, x, y, color=:green)
+	return fig
+end
+
+# ╔═╡ 55d3aa45-77df-4a44-8f4e-a2f440252117
+@bind m PlutoUI.Slider(10:1000, show_value = true)
+
+# ╔═╡ 607220af-4bbc-4ba5-86ff-3db6008e82c1
+begin
+	fda(m)
+end
+
+# ╔═╡ b75df8b5-ecc5-451b-8af6-fa7a38794f61
+function uniform(p, a, b) :: Vector
+	return a:(b-a)/(p-1):b
+end
+
+# ╔═╡ bc58ee3f-1c3e-4efe-b723-0cc72086caea
+function chebyshev(p, a, b) :: Vector
+	x = zeros(p)
+
+	for i in 1:p
+		xi = cos((2i-1) * π / (2p))
+		x[i] = (a + b)/2 + (b - a)/2 * xi
+	end
+
+	return reverse(x)
+end
+
+# ╔═╡ 6528e003-38c5-4d03-ace6-2c194ccc4f43
+function monomial(x::Vector, j)
+	return x .^ (j-1)
+end
+
+# ╔═╡ 3beff2cb-083c-4a9e-8321-e409f92cf7cb
+function gaussian(x::Vector, j)
+	return exp.(-1.9044 * (x[j] .- x) .^ 2)
+end
+
+# ╔═╡ f553378f-1eb6-4d7d-aa5b-0a1d4d69ab3f
+function Lmonomial(x::Vector, j)
+	(j-2) * (j-1) * x .^ (j-3) - (j-1) * x .^ (j-2) .- 3 * monomial(x, j)
+end
+
+# ╔═╡ 5505ae59-db8b-4951-b292-91c00b7e7ad0
+function Lgaussian(x::Vector, j)
+	ep_sqr = 3.8088
+	return ep_sqr * gaussian(x, j) .* (ep_sqr * (x[j] .- x).^2 .- 1) - ep_sqr * (x[j] .- x) .* gaussian(x, j) .- 3 * gaussian(x, j)
+end
+
+# ╔═╡ 15df3107-62d4-4e9a-968e-84c1cffb8fbf
+function colloc_M_b(
+	p,
+	xa, ya,
+	xb, yb,
+	point_fn, basis_fn
+)
+	# Generate collocation points
+	x = point_fn(p, xa, xb)
+
+	# Initialize matrix M and vector b 
+	M = zeros(p, p)
+	b = zeros(p)
+
+	
+	# Fill in the matrix M and vector b
+	for j in 1:p
+		phi_points = basis_fn(x, j)
+		
+		Lphi_points = basis_fn == gaussian ? 
+		Lgaussian(x, j) : Lmonomial(x, j)
+		
+		M[1, 	 j] = phi_points[1]
+		M[2:p-1, j] = Lphi_points[2:p-1]
+		M[p, 	 j] = phi_points[p]
+		
+	end
+	
+	b = ones(p) * 8
+	b[1] = ya
+	b[end] = yb
+	
+	return (M, b)
+end
+
+# ╔═╡ 1db65d2b-7df4-4e64-8fd1-bfdaf97eb18e
+function colloc(
+	p,
+	xa, ya,
+	xb, yb,
+	point_fn, basis_fn
+)
+	
+	M, b = colloc_M_b(p, xa, ya, xb, yb, point_fn, basis_fn)
+	w = M \ b
+
+	x = point_fn(p, xa, xb)
+	y = w[1] * basis_fn(x, 1)
+	for i in 2:p
+		y = y + w[i] * basis_fn(x, i)
+	end
+
+	fig = Figure()
+	ax = Axis(fig[1, 1], 
+		title="Collocation Trajectory (Uniform Points, Monomial Basis)",
+		# title="Collocation Trajectory (Uniform Points, Gaussian Basis)",
+		# title="Collocation Trajectory (Chebyshev Points, Gaussian Basis)",
+		# title="Collocation Trajectory (Chebyshev Points, Monomial Basis)",
+		xlabel="Distance (x)", 
+		ylabel="Height (y)")
+
+	scatter!(ax, x, y, color=:blue)
+	return fig
+end
+
+# ╔═╡ 35c70dfc-254f-4431-aa7a-b5846fb788c4
+begin
+	xa, ya = (0.0, 1.0)
+	xb, yb = (1.0, 10)
+	p = 50
+
+	colloc(p, xa, ya, xb, yb, uniform, monomial)
+end
+
+# ╔═╡ 75b0aac6-2a9e-4de9-b2d7-958fc866e177
+function shooting_points(f, x0, y0::Vector, h, iters)
+	points = rk4(f, x0, y0, h, iters)
+	x = []
+	y = []
+	for p in points
+		push!(x, p[1])
+		push!(y, p[2][1])
+	end
+	
+	return (x,y)
+end
+
+# ╔═╡ 9d47cb54-9c7a-47df-b2e9-8619c43687ef
+function fda_points(m) 
+	M = fda_M(m)
+	b = fda_b(m)
+
+	x::Vector = 0:1/(m-1):1
+	y = M \ b
+	
+	return (x, y)
+end
+
+# ╔═╡ 2cb44676-ecec-4478-b86b-7be3beea7edd
+function colloc_points(
+	p,
+	xa, ya,
+	xb, yb,
+	point_fn, basis_fn
+)
+	
+	M, b = colloc_M_b(p, xa, ya, xb, yb, point_fn, basis_fn)
+	w = M \ b
+
+	x = point_fn(p, xa, xb)
+	y = w[1] * basis_fn(x, 1)
+	for i in 2:p
+		y = y + w[i] * basis_fn(x, i)
+	end
+
+	return (x,y)
+end
+
+# ╔═╡ 197899c4-1448-47c3-aeef-d98879bb594b
+function filter_vec(vx::Vector, vy::Vector, num)
+	indices = filter(i -> (100 * vx[i]) % 3 != num, 1:length(vx))
+	deleteat!(vx, indices)
+	deleteat!(vy, indices)
+	return (vx, vy)
+end
+
+# ╔═╡ 49af5561-a51e-4521-9b1b-c50082eb9fef
+function combined_plot()
+	# Shooting method
+	s1, s2 = shooting_points(f, 0.0, [1.0, -0.452319], 0.01, 100)
+	sx, sy = filter_vec(s1, s2, 0)
+
+	# Finite Difference method
+	f1, f2 = fda_points(101)
+	fx, fy = filter_vec(f1, f2, 1)
+
+	# Collocation method
+	c1, c2 = colloc_points(101, 0.0, 1.0, 1.0, 10, uniform, gaussian)
+	cx, cy = filter_vec(c1, c2, 2)
+
+	fig = Figure()
+	ax = Axis(fig[1, 1], 
+		title="Comparison of Methods", 
+		xlabel="Distance (x)", 
+		ylabel="Height (y)")
+
+	scatter!(ax, sx, sy, color=:red, label="Shooting")
+	scatter!(ax, fx, fy, color=:blue, label="Finite Difference")
+	scatter!(ax, cx, cy, color=:yellow, label="Collocation")
+
+
+	axislegend(ax, position = :lt)
+	return fig
+end
+
+# ╔═╡ 34455b47-0219-4cb4-a99b-977b5d333fe5
+combined_plot()
+
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
@@ -150,7 +406,7 @@ PlutoUI = "~0.7.60"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.0"
+julia_version = "1.11.1"
 manifest_format = "2.0"
 project_hash = "b1d7173578a4e52330f3042fa8e57c39ba68e320"
 
@@ -1642,5 +1898,25 @@ version = "3.6.0+0"
 # ╠═2fe86d14-945b-4d59-befa-d12b8631b79a
 # ╠═3c40817e-aaf2-4e85-956c-479f3582d82e
 # ╠═c8e55800-6d47-41dd-998d-76420d6d3254
+# ╠═114f55a8-2f59-4c39-87ab-f9b872ee0084
+# ╠═500d80aa-d68d-4be7-ac14-8fe45fb2fbe5
+# ╠═19e9313a-ed74-4676-a069-39cebe3f3096
+# ╠═55d3aa45-77df-4a44-8f4e-a2f440252117
+# ╠═607220af-4bbc-4ba5-86ff-3db6008e82c1
+# ╠═b75df8b5-ecc5-451b-8af6-fa7a38794f61
+# ╠═bc58ee3f-1c3e-4efe-b723-0cc72086caea
+# ╠═6528e003-38c5-4d03-ace6-2c194ccc4f43
+# ╠═3beff2cb-083c-4a9e-8321-e409f92cf7cb
+# ╠═f553378f-1eb6-4d7d-aa5b-0a1d4d69ab3f
+# ╠═5505ae59-db8b-4951-b292-91c00b7e7ad0
+# ╠═15df3107-62d4-4e9a-968e-84c1cffb8fbf
+# ╠═1db65d2b-7df4-4e64-8fd1-bfdaf97eb18e
+# ╠═35c70dfc-254f-4431-aa7a-b5846fb788c4
+# ╠═75b0aac6-2a9e-4de9-b2d7-958fc866e177
+# ╠═9d47cb54-9c7a-47df-b2e9-8619c43687ef
+# ╠═2cb44676-ecec-4478-b86b-7be3beea7edd
+# ╠═197899c4-1448-47c3-aeef-d98879bb594b
+# ╠═49af5561-a51e-4521-9b1b-c50082eb9fef
+# ╠═34455b47-0219-4cb4-a99b-977b5d333fe5
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
