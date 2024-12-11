@@ -14,381 +14,190 @@ macro bind(def, element)
     end
 end
 
-# ╔═╡ 3a118020-8fb6-11ef-00cd-0d0324cb9013
+# ╔═╡ 03164de8-2fbc-4c56-96e7-bd29008479e5
 begin
 	using CairoMakie
 	using LinearAlgebra
 	using PlutoUI
 end
 
-# ╔═╡ fe280272-f067-4734-b28a-1e865d5e5ed3
-function f(x, y::Vector)
-    y1_prime = y[2]
-    y2_prime = y[2] + 3 * y[1] + 8
-    return [y1_prime, y2_prime]
+# ╔═╡ 8bd03b29-c376-4740-8826-f21ef079b647
+md"# Sand Kingdom (60 Power Moons)"
+
+# ╔═╡ 76ce79a0-b6df-11ef-07d2-f15cb7e9302d
+function x_values(l::Float64, r::Float64, m::Int)::Vector{Float64}
+    return range(l, r, length=m+1) |> collect
 end
 
-# ╔═╡ 2482ab2a-bd06-4f1e-93b8-f50df7148b76
-function rk4(f, x0, y0::Vector, h, iters)
-	res = [(x0, y0)]
-	for _ in 1:iters
-		x, y = res[end]
-		k1 = f(x, y)
-        k2 = f(x + h / 2, y + (h/2) * k1)
-        k3 = f(x + h / 2, y + (h/2) * k2)
-        k4 = f(x + h, y + h * k3)
+# ╔═╡ a8629520-39c4-4e91-9249-a85d1d9f0dfb
+x_values(0.0, 10.0, 5)
 
-		x_new = x + h
-		y_new = y + h / 6 * (k1 + 2*k2 + 2*k3 + k4)
+# ╔═╡ 7ee528e1-ee1f-4ce8-928d-1ee509df270c
+function integrate(f::Function, l, r, m)
+	# Calculate the step size
+    h = (r - l) / m
 
-		push!(res, (x_new, y_new))
-	end
-	return res
+    # Initial sum with the first and last terms
+    integration = f(l) + f(r)
+
+    # Iteratively add terms based on Simpson's 3/8 rule
+    for i in 1:(m-1)
+        x = l + i * h
+        if i % 3 == 0
+            integration += 2 * f(x)
+        else
+            integration += 3 * f(x)
+        end
+    end
+
+    # Final multiplication
+    integration *= 3 * h / 8
+
+    return integration
 end
 
-# ╔═╡ 8f333101-09f0-46b3-942c-4ed1663929aa
-function shooting(f, x0, y0::Vector, h, iters)
-	shooting_figure = Figure()
-	shooting_axis = Axis(
-		shooting_figure[1,1],
-		title = "Shooting Method with y'_0 = $(y0[2])",
-		xlabel = "x",
-		ylabel = "y",
-	)
-	points = rk4(f, x0, y0, h, iters)
-	x_values = [p[1] for p in points]
-	y_values = [p[2][1] for p in points]
-	println(points)
-	scatter!(shooting_axis, x_values, y_values, colormap = :dense)
-	return shooting_figure
-end
 
-# ╔═╡ 1735dcf8-5886-4bb8-9286-5da1e07b7e3f
-@bind y′0 PlutoUI.Slider(-0.45:0.001:1,show_value = true)
-
-# ╔═╡ cd30d919-d010-4220-b186-5a9e6804fc4a
-begin
-	x0 = 0.0
-	y0 = [1, float(y′0)]
-	h = 0.05
-	iters = 20
-	shooting_graph = shooting(f, x0, y0, h, iters)
-	# save("shooting.png",shooting_graph)
-	shooting_graph
-end
-
-# ╔═╡ f6a2f754-ab46-4781-8138-67990e84245d
-md"``We \ will \ begin \ our \ solution \ for \ the \ FDA \ Method.``"
-
-
-# ╔═╡ 9d8ef13b-6920-41b8-bee5-5871f82869a2
-md"```math
-y'' = y' + 3y + 8
-```"
-
-# ╔═╡ 17952816-95e9-49e8-8dce-b4b5d7495428
-md"```math
-\frac{y_{i-1} - 2y_i + y_{i+1}}{h^2} = \frac{y_{i+1}-y_{i-1}}{2h} + 3y_i + 8
-```"
-
-# ╔═╡ 2fe86d14-945b-4d59-befa-d12b8631b79a
-md"```math
-2y_{i-1} - 4y_i + 2_{i+1} = hy_{i+1} - hy_{i-1} + 6h^2y_i + 16h^2
-```"
-
-# ╔═╡ 3c40817e-aaf2-4e85-956c-479f3582d82e
-md"```math
-(2+h)y_{i-1} + (-4-6h^2)y_i + (2-h)y_{i+1} - 16h^2 = 0
-```"
-
-# ╔═╡ c8e55800-6d47-41dd-998d-76420d6d3254
-md"```math
-My = \
-\begin{bmatrix}
-1 & 0 & 0 & 0 & ... & 0 & 0  \\
-2 + h & -4-6h^2 & 2-h & 0 &... & 0 & 0 \\
-0 & 2 + h & -4-6h^2 & 2-h & ... & 0 & 0 \\
-0 & 0 & 2 + h & -4-6h^2  & ... & 0 & 0 \\
-\vdots & \vdots & \vdots & \vdots & \ddots & \vdots & \vdots \\
-0 & 0 & 0 & 0 & ... & -4-6h^2 & 2-h \\
-0 & 0 & 0 & 0 & ... & 0 & 1 \\
-\end{bmatrix}
-\begin{bmatrix}
-y_1 \\
-y_2 \\
-y_3 \\
-y_4 \\
-\vdots \\
-y_{n-1} \\
-y_n 
-\end{bmatrix}
-=
-\begin{bmatrix}
-1 \\
-16h^2 \\
-16h^2 \\
-16h^2 \\
-\vdots \\
-16h^2 \\
-10
-\end{bmatrix}
-```"
-
-# ╔═╡ 114f55a8-2f59-4c39-87ab-f9b872ee0084
-function fda_M(m::Int)
-	h = 1/m
-	
-	# Create an m x m zero matrix
-	M = zeros(m, m)
-	M[1,1] = M[m,m] = 1
-
-	# Fill the matrix for interior points
-	for i in 2:m-1
-		M[i, i-1] = 2 + h
-		M[i, i] = -4 - 6 * h^2
-		M[i, i+1] = 2 - h
-	end
-
-	return M
-end
-
-# ╔═╡ 500d80aa-d68d-4be7-ac14-8fe45fb2fbe5
-function fda_b(m::Int)
-	h = 1/m
-	b = zeros(m)
-
-	# Fill the vector for interior points
-	for i in 2:m-1
-		b[i] = 16 * h^2
-	end
-
-	b[1] = 1
-	b[m] = 10
-
-	return b
-end
-
-# ╔═╡ 19e9313a-ed74-4676-a069-39cebe3f3096
-function fda(m::Int)
-	M = fda_M(m)
-	b = fda_b(m)
-
-	x = 0:1/(m-1):1
-	y = M \ b
-
-	fig = Figure()
-	ax = Axis(fig[1, 1],
-		title="Finite Difference Approximation Trajectory",
-		xlabel="Distance (x)",
-		ylabel="Height (y)")
-
-	scatter!(ax, x, y, color=:green)
-	return fig
-end
-
-# ╔═╡ 55d3aa45-77df-4a44-8f4e-a2f440252117
-@bind m PlutoUI.Slider(10:1000, show_value = true)
-
-# ╔═╡ 607220af-4bbc-4ba5-86ff-3db6008e82c1
-begin
-	fda(m)
-end
-
-# ╔═╡ b75df8b5-ecc5-451b-8af6-fa7a38794f61
-function uniform(p, a, b) :: Vector
-	return a:(b-a)/(p-1):b
-end
-
-# ╔═╡ bc58ee3f-1c3e-4efe-b723-0cc72086caea
-function chebyshev(p, a, b) :: Vector
-	x = zeros(p)
-
-	for i in 1:p
-		xi = cos((2i-1) * π / (2p))
-		x[i] = (a + b)/2 + (b - a)/2 * xi
-	end
-
-	return reverse(x)
-end
-
-# ╔═╡ 6528e003-38c5-4d03-ace6-2c194ccc4f43
-function monomial(x::Vector, j)
-	return x .^ (j-1)
-end
-
-# ╔═╡ 3beff2cb-083c-4a9e-8321-e409f92cf7cb
-function gaussian(x::Vector, j)
-	return exp.(-1.9044 * (x[j] .- x) .^ 2)
-end
-
-# ╔═╡ f553378f-1eb6-4d7d-aa5b-0a1d4d69ab3f
-function Lmonomial(x::Vector, j)
-	(j-2) * (j-1) * x .^ (j-3) - (j-1) * x .^ (j-2) .- 3 * monomial(x, j)
-end
-
-# ╔═╡ 5505ae59-db8b-4951-b292-91c00b7e7ad0
-function Lgaussian(x::Vector, j)
-	ep_sqr = 3.8088
-	return ep_sqr * gaussian(x, j) .* (ep_sqr * (x[j] .- x).^2 .- 1) - ep_sqr * (x[j] .- x) .* gaussian(x, j) .- 3 * gaussian(x, j)
-end
-
-# ╔═╡ 15df3107-62d4-4e9a-968e-84c1cffb8fbf
-function colloc_M_b(
-	p,
-	xa, ya,
-	xb, yb,
-	point_fn, basis_fn
+# ╔═╡ 35e65b09-fc17-456e-ab63-facf05b9b9cc
+function compare(
+    f::Function, ∫f::Function, l, r, m
 )
-	# Generate collocation points
-	x = point_fn(p, xa, xb)
 
-	# Initialize matrix M and vector b 
-	M = zeros(p, p)
-	b = zeros(p)
+    # Store results for plotting
+    interval_values = 3:3:m
+    numerical_results = []
+    analytic_results = []
 
-	
-	# Fill in the matrix M and vector b
-	for j in 1:p
-		phi_points = basis_fn(x, j)
-		
-		Lphi_points = basis_fn == gaussian ? 
-		Lgaussian(x, j) : Lmonomial(x, j)
-		
-		M[1, 	 j] = phi_points[1]
-		M[2:p-1, j] = Lphi_points[2:p-1]
-		M[p, 	 j] = phi_points[p]
-		
-	end
-	
-	b = ones(p) * 8
-	b[1] = ya
-	b[end] = yb
-	
-	return (M, b)
+    # Compute numerical and analytical integrals for different intervals
+    for n in interval_values
+        numerical = integrate(f, l, r, n)  # Numerical integration
+        analytical = ∫f(r) - ∫f(l)        # Analytical result
+        push!(numerical_results, numerical)
+        push!(analytic_results, analytical)
+    end
+
+    # Create the plot
+    compare_figure = Figure()
+    compare_axis = Axis(
+        compare_figure[1, 1],
+        title = "Comparison of Analytical and Numerical Integration",
+        xlabel = "Number of Intervals (n)",
+        ylabel = "Integral Value",
+    )
+
+    scatter!(compare_axis, interval_values, analytic_results, label = "Analytical", color = :blue)
+    scatter!(compare_axis, interval_values, numerical_results, label = "Numerical", color = :red)
+
+    axislegend(compare_axis, position = :rb)
+    return compare_figure
 end
 
-# ╔═╡ 1db65d2b-7df4-4e64-8fd1-bfdaf97eb18e
-function colloc(
-	p,
-	xa, ya,
-	xb, yb,
-	point_fn, basis_fn
-)
-	
-	M, b = colloc_M_b(p, xa, ya, xb, yb, point_fn, basis_fn)
-	w = M \ b
 
-	x = point_fn(p, xa, xb)
-	y = w[1] * basis_fn(x, 1)
-	for i in 2:p
-		y = y + w[i] * basis_fn(x, i)
-	end
+# ╔═╡ d7dc5662-670a-4b04-a10f-2f1acd6ea222
+@bind M PlutoUI.Slider(3:3:3000,show_value = true)
 
-	fig = Figure()
-	ax = Axis(fig[1, 1], 
-		title="Collocation Trajectory (Uniform Points, Monomial Basis)",
-		# title="Collocation Trajectory (Uniform Points, Gaussian Basis)",
-		# title="Collocation Trajectory (Chebyshev Points, Gaussian Basis)",
-		# title="Collocation Trajectory (Chebyshev Points, Monomial Basis)",
-		xlabel="Distance (x)", 
-		ylabel="Height (y)")
-
-	scatter!(ax, x, y, color=:blue)
-	return fig
-end
-
-# ╔═╡ 35c70dfc-254f-4431-aa7a-b5846fb788c4
+# ╔═╡ 14a74ace-fd5a-43c5-9f15-15c39b26fd7e
 begin
-	xa, ya = (0.0, 1.0)
-	xb, yb = (1.0, 10)
-	p = 50
-
-	colloc(p, xa, ya, xb, yb, uniform, monomial)
-end
-
-# ╔═╡ 75b0aac6-2a9e-4de9-b2d7-958fc866e177
-function shooting_points(f, x0, y0::Vector, h, iters)
-	points = rk4(f, x0, y0, h, iters)
-	x = []
-	y = []
-	for p in points
-		push!(x, p[1])
-		push!(y, p[2][1])
-	end
+	# Sample Functions
+	f_sand(x) = ℯ^(-(x+ℯ^(-x)))
+	∫f_sand(x) = ℯ^(-ℯ^(-x))
 	
-	return (x,y)
+	comparison = compare(f_sand, ∫f_sand, -2.0, 2.0, M)
+	# save("sand.png", comparison)
+	comparison
 end
 
-# ╔═╡ 9d47cb54-9c7a-47df-b2e9-8619c43687ef
-function fda_points(m) 
-	M = fda_M(m)
-	b = fda_b(m)
+# ╔═╡ e0cb8d94-4292-4c79-ac1b-e3342ef4594a
+md"# Wooded Kingdom (70 Power Moons)"
 
-	x::Vector = 0:1/(m-1):1
-	y = M \ b
-	
-	return (x, y)
+# ╔═╡ 1eb6cdb6-f6bb-407b-a739-922147f571c1
+function a_coeff(f::Function, L, n)
+	if n == 0
+        # a_0 = (1 / (2L)) ∫[−L, L] f(x) dx
+        return integrate(f, -L, L, M) / (2L)
+    else
+        # a_n = (1 / L) ∫[−L, L] f(x) * cos(nπx / L) dx
+        integrand(x) = f(x) * cos(n * π * x / L)
+        return integrate(integrand, -L, L, M) / L
+    end
 end
 
-# ╔═╡ 2cb44676-ecec-4478-b86b-7be3beea7edd
-function colloc_points(
-	p,
-	xa, ya,
-	xb, yb,
-	point_fn, basis_fn
-)
-	
-	M, b = colloc_M_b(p, xa, ya, xb, yb, point_fn, basis_fn)
-	w = M \ b
-
-	x = point_fn(p, xa, xb)
-	y = w[1] * basis_fn(x, 1)
-	for i in 2:p
-		y = y + w[i] * basis_fn(x, i)
-	end
-
-	return (x,y)
+# ╔═╡ fa788522-8a27-4b05-8267-53bf307c5d43
+function b_coeff(f::Function, L, n)
+    # b_n = (1 / L) ∫[−L, L] f(x) * sin(nπx / L) dx
+    integrand(x) = f(x) * sin(n * π * x / L)
+    return integrate(integrand, -L, L, M) / L
 end
 
-# ╔═╡ 197899c4-1448-47c3-aeef-d98879bb594b
-function filter_vec(vx::Vector, vy::Vector, num)
-	indices = filter(i -> (100 * vx[i]) % 3 != num, 1:length(vx))
-	deleteat!(vx, indices)
-	deleteat!(vy, indices)
-	return (vx, vy)
+# ╔═╡ 3656c4b9-8038-4fcf-83c3-d56b89c32dbc
+function fourier(f::Function, L, p, n)::Vector
+    # Generate p evenly spaced x-values in the range [-L, L]
+    x_values = range(-L, L, length=p)
+
+    # Calculate the Fourier coefficients a_n and b_n
+    a0 = a_coeff(f, L, 0)
+    a_values = [a_coeff(f, L, k) for k in 1:n]
+    b_values = [b_coeff(f, L, k) for k in 1:n]
+
+    # Compute the Fourier series approximation for each x-value
+    y_values = []
+    for x in x_values
+        # Fourier series sum
+        sum = a0
+        for k in 1:n
+            sum += a_values[k] * cos(k * π * x / L) + b_values[k] * sin(k * π * x / L)
+        end
+        push!(y_values, sum)
+    end
+
+    return y_values
 end
 
-# ╔═╡ 49af5561-a51e-4521-9b1b-c50082eb9fef
-function combined_plot()
-	# Shooting method
-	s1, s2 = shooting_points(f, 0.0, [1.0, -0.452319], 0.01, 100)
-	sx, sy = filter_vec(s1, s2, 0)
+# ╔═╡ 46b468d6-f14c-4501-9c7b-f7b3bbe9fb8b
+function fourier_plot(f::Function, L, p, n)
+    x_values = range(-L, L, length=p) |> collect
+    actual_y_values = [f(x) for x in x_values]
+    approx_y_values = fourier(f, L, p, n)
 
-	# Finite Difference method
-	f1, f2 = fda_points(101)
-	fx, fy = filter_vec(f1, f2, 1)
+    fourier_figure = Figure()
+    fourier_axis = Axis(
+        fourier_figure[1, 1],
+        title = "Fourier Series Approximation vs Actual Function",
+        xlabel = "x",
+        ylabel = "y"
+    )
 
-	# Collocation method
-	c1, c2 = colloc_points(101, 0.0, 1.0, 1.0, 10, uniform, gaussian)
-	cx, cy = filter_vec(c1, c2, 2)
+    # Plot actual function
+    scatter!(fourier_axis, x_values, actual_y_values, label = "Actual Function", color = :blue)
 
-	fig = Figure()
-	ax = Axis(fig[1, 1], 
-		title="Comparison of Methods", 
-		xlabel="Distance (x)", 
-		ylabel="Height (y)")
+    # Plot Fourier series approximation
+    scatter!(fourier_axis, x_values, approx_y_values, label = "Fourier Approximation", color = :red)
 
-	scatter!(ax, sx, sy, color=:red, label="Shooting")
-	scatter!(ax, fx, fy, color=:blue, label="Finite Difference")
-	scatter!(ax, cx, cy, color=:yellow, label="Collocation")
+    # Add a legend
+    axislegend(fourier_axis, position = :rb)
 
-
-	axislegend(ax, position = :lt)
-	return fig
+    return fourier_figure
 end
 
-# ╔═╡ 34455b47-0219-4cb4-a99b-977b5d333fe5
-combined_plot()
+
+# ╔═╡ a1fe25e2-d700-4d88-825d-5940d9197145
+@bind L PlutoUI.Slider(2:10, show_value = true)
+
+# ╔═╡ db3b3fa7-7e20-456c-b5d0-747a6ece3ca7
+@bind p PlutoUI.Slider(100:200,show_value = true)
+
+# ╔═╡ 0a273292-8b2a-4655-bf88-805ff8ef6380
+@bind n PlutoUI.Slider(100:200,show_value = true)
+
+# ╔═╡ b55cbf6d-e854-4cfc-aa9e-69c4c6d23a99
+begin
+	f_fourier(x) = ℯ^(-(x+ℯ^(-x)))
+	fourier_fig = fourier_plot(f_fourier, L, p, n)
+	# save("wooded.png", fourier_fig)
+	fourier_fig
+end
+
+# ╔═╡ f04af2d0-b38e-4fae-a314-81f56bd86281
+md"# Lost Kingdom (80 Power Moons)"
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -406,7 +215,7 @@ PlutoUI = "~0.7.60"
 PLUTO_MANIFEST_TOML_CONTENTS = """
 # This file is machine-generated - editing it directly is not advised
 
-julia_version = "1.11.1"
+julia_version = "1.11.2"
 manifest_format = "2.0"
 project_hash = "b1d7173578a4e52330f3042fa8e57c39ba68e320"
 
@@ -995,9 +804,9 @@ version = "1.0.0"
 
 [[deps.JLLWrappers]]
 deps = ["Artifacts", "Preferences"]
-git-tree-sha1 = "be3dc50a92e5a386872a493a10050136d4703f9b"
+git-tree-sha1 = "f389674c99bfcde17dc57454011aa44d5a260a40"
 uuid = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
-version = "1.6.1"
+version = "1.6.0"
 
 [[deps.JSON]]
 deps = ["Dates", "Mmap", "Parsers", "Unicode"]
@@ -1886,37 +1695,23 @@ version = "3.6.0+0"
 """
 
 # ╔═╡ Cell order:
-# ╠═3a118020-8fb6-11ef-00cd-0d0324cb9013
-# ╠═fe280272-f067-4734-b28a-1e865d5e5ed3
-# ╠═2482ab2a-bd06-4f1e-93b8-f50df7148b76
-# ╠═8f333101-09f0-46b3-942c-4ed1663929aa
-# ╠═1735dcf8-5886-4bb8-9286-5da1e07b7e3f
-# ╠═cd30d919-d010-4220-b186-5a9e6804fc4a
-# ╠═f6a2f754-ab46-4781-8138-67990e84245d
-# ╠═9d8ef13b-6920-41b8-bee5-5871f82869a2
-# ╠═17952816-95e9-49e8-8dce-b4b5d7495428
-# ╠═2fe86d14-945b-4d59-befa-d12b8631b79a
-# ╠═3c40817e-aaf2-4e85-956c-479f3582d82e
-# ╠═c8e55800-6d47-41dd-998d-76420d6d3254
-# ╠═114f55a8-2f59-4c39-87ab-f9b872ee0084
-# ╠═500d80aa-d68d-4be7-ac14-8fe45fb2fbe5
-# ╠═19e9313a-ed74-4676-a069-39cebe3f3096
-# ╠═55d3aa45-77df-4a44-8f4e-a2f440252117
-# ╠═607220af-4bbc-4ba5-86ff-3db6008e82c1
-# ╠═b75df8b5-ecc5-451b-8af6-fa7a38794f61
-# ╠═bc58ee3f-1c3e-4efe-b723-0cc72086caea
-# ╠═6528e003-38c5-4d03-ace6-2c194ccc4f43
-# ╠═3beff2cb-083c-4a9e-8321-e409f92cf7cb
-# ╠═f553378f-1eb6-4d7d-aa5b-0a1d4d69ab3f
-# ╠═5505ae59-db8b-4951-b292-91c00b7e7ad0
-# ╠═15df3107-62d4-4e9a-968e-84c1cffb8fbf
-# ╠═1db65d2b-7df4-4e64-8fd1-bfdaf97eb18e
-# ╠═35c70dfc-254f-4431-aa7a-b5846fb788c4
-# ╠═75b0aac6-2a9e-4de9-b2d7-958fc866e177
-# ╠═9d47cb54-9c7a-47df-b2e9-8619c43687ef
-# ╠═2cb44676-ecec-4478-b86b-7be3beea7edd
-# ╠═197899c4-1448-47c3-aeef-d98879bb594b
-# ╠═49af5561-a51e-4521-9b1b-c50082eb9fef
-# ╠═34455b47-0219-4cb4-a99b-977b5d333fe5
+# ╠═03164de8-2fbc-4c56-96e7-bd29008479e5
+# ╠═8bd03b29-c376-4740-8826-f21ef079b647
+# ╠═76ce79a0-b6df-11ef-07d2-f15cb7e9302d
+# ╠═a8629520-39c4-4e91-9249-a85d1d9f0dfb
+# ╠═7ee528e1-ee1f-4ce8-928d-1ee509df270c
+# ╠═35e65b09-fc17-456e-ab63-facf05b9b9cc
+# ╠═14a74ace-fd5a-43c5-9f15-15c39b26fd7e
+# ╠═d7dc5662-670a-4b04-a10f-2f1acd6ea222
+# ╠═e0cb8d94-4292-4c79-ac1b-e3342ef4594a
+# ╠═1eb6cdb6-f6bb-407b-a739-922147f571c1
+# ╠═fa788522-8a27-4b05-8267-53bf307c5d43
+# ╠═3656c4b9-8038-4fcf-83c3-d56b89c32dbc
+# ╠═46b468d6-f14c-4501-9c7b-f7b3bbe9fb8b
+# ╠═a1fe25e2-d700-4d88-825d-5940d9197145
+# ╠═db3b3fa7-7e20-456c-b5d0-747a6ece3ca7
+# ╠═0a273292-8b2a-4655-bf88-805ff8ef6380
+# ╠═b55cbf6d-e854-4cfc-aa9e-69c4c6d23a99
+# ╠═f04af2d0-b38e-4fae-a314-81f56bd86281
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
