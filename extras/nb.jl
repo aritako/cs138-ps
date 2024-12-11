@@ -14,521 +14,472 @@ macro bind(def, element)
     end
 end
 
-# ╔═╡ 03164de8-2fbc-4c56-96e7-bd29008479e5
+# ╔═╡ 7e122e50-afaa-11ef-2b09-2b239697086a
 begin
 	using CairoMakie
 	using LinearAlgebra
 	using PlutoUI
 end
 
-# ╔═╡ 8bd03b29-c376-4740-8826-f21ef079b647
-md"# Sand Kingdom (60 Power Moons)"
+# ╔═╡ 3efb52be-0651-4bb9-8e5f-8f43145bff60
+md"""# Sand"""
 
-# ╔═╡ 76ce79a0-b6df-11ef-07d2-f15cb7e9302d
-function x_values(l::Float64, r::Float64, m::Int)::Vector{Float64}
-    return range(l, r, length=m+1) |> collect
+# ╔═╡ 3e383d34-2da9-42b1-aeee-9e1058e8aac5
+function x_values(l, r, m)::Vector
+	return range(l, r, length=m+1)
 end
 
-# ╔═╡ a8629520-39c4-4e91-9249-a85d1d9f0dfb
-x_values(0.0, 10.0, 5)
-
-# ╔═╡ 7ee528e1-ee1f-4ce8-928d-1ee509df270c
+# ╔═╡ fafa91f1-ea6e-4f52-aaa3-17b5fc72a5cf
 function integrate(f::Function, l, r, m)
-	# Calculate the step size
-    h = (r - l) / m
-
-    # Initial sum with the first and last terms
-    integration = f(l) + f(r)
-
-    # Iteratively add terms based on Simpson's 3/8 rule
-    for i in 1:(m-1)
-        x = l + i * h
-        if i % 3 == 0
-            integration += 2 * f(x)
-        else
-            integration += 3 * f(x)
-        end
+    h = (r-l)/m
+    x_vals = x_values(l, r, m)
+	integral = 0
+    
+	for i in 1:3:m
+        x0, x1, x2, x3 = x_vals[i], x_vals[i+1], x_vals[i+2], x_vals[i+3]
+        integral += (3 * h / 8) * (f(x0) + 3 * f(x1) + 3 * f(x2) + f(x3))
     end
-
-    # Final multiplication
-    integration *= 3 * h / 8
-
-    return integration
-end
-
-
-# ╔═╡ 35e65b09-fc17-456e-ab63-facf05b9b9cc
-function compare(
-    f::Function, ∫f::Function, l, r, m
-)
-
-    # Store results for plotting
-    interval_values = 3:3:m
-    numerical_results = []
-    analytic_results = []
-
-    # Compute numerical and analytical integrals for different intervals
-    for n in interval_values
-        numerical = integrate(f, l, r, n)  # Numerical integration
-        analytical = ∫f(r) - ∫f(l)        # Analytical result
-        push!(numerical_results, numerical)
-        push!(analytic_results, analytical)
-    end
-
-    # Create the plot
-    compare_figure = Figure()
-    compare_axis = Axis(
-        compare_figure[1, 1],
-        title = "Comparison of Analytical and Numerical Integration",
-        xlabel = "Number of Intervals (n)",
-        ylabel = "Integral Value",
-    )
-
-    scatter!(compare_axis, interval_values, analytic_results, label = "Analytical", color = :blue)
-    scatter!(compare_axis, interval_values, numerical_results, label = "Numerical", color = :red)
-
-    axislegend(compare_axis, position = :rb)
-    return compare_figure
-end
-
-
-# ╔═╡ d7dc5662-670a-4b04-a10f-2f1acd6ea222
-@bind M PlutoUI.Slider(3:3:3000,show_value = true)
-
-# ╔═╡ 14a74ace-fd5a-43c5-9f15-15c39b26fd7e
-begin
-	# Sample Functions
-	f_sand(x) = ℯ^(-(x+ℯ^(-x)))
-	∫f_sand(x) = ℯ^(-ℯ^(-x))
 	
-	comparison = compare(f_sand, ∫f_sand, -2.0, 2.0, M)
-	# save("sand.png", comparison)
-	comparison
+    # println("Integral with m = $(m) is $(integral)")
+    return integral
 end
 
-# ╔═╡ e0cb8d94-4292-4c79-ac1b-e3342ef4594a
-md"# Wooded Kingdom (70 Power Moons)"
+# ╔═╡ ae4814bf-53c7-47cd-b7b1-ab48cb84e13f
+function compare(
+	f::Function, ∫f::Function,
+	l, r, m
+)
+	intervals = 3:3:m
+	
+	numerical_vals = [integrate(f, l, r, n) for n in intervals]
+	analytic_vals = [∫f(r) - ∫f(l) for _ in intervals]
 
-# ╔═╡ 1eb6cdb6-f6bb-407b-a739-922147f571c1
+	# println("Actual value is $(∫f(r) - ∫f(l))")
+	
+	figure = Figure()
+    ax = Axis(figure[1, 1],
+        title = "Amount of Sand using Analytic and Numerical Integration (m=$(m))",
+        xlabel = "Number of Intervals (m)",
+        ylabel = "Integral Value"
+    )
+	
+    scatter!(ax, intervals, analytic_vals, color=:green, label="Values Analytically")
+    scatter!(ax, intervals, numerical_vals, color=:red, label="Values Numerically")
+	axislegend(ax, position = :rt)
+	figure
+
+	# save("sand.png", figure)
+end
+
+# ╔═╡ 0196668b-4fee-460a-be9e-29e5a41e7faa
+@bind m PlutoUI.Slider(333:3:3000)
+
+# ╔═╡ 522781b6-2454-431f-9a72-88f80c2eba01
+md"""m = $(m)"""
+
+# ╔═╡ 2e2f7959-bf38-4483-9fe8-7f5ef65e9ab4
+begin
+	f_sanded(x) = exp(-(x + exp(-x)))
+	∫f_sanded(x) = exp(-exp(-x))
+	l, r = -2, 2
+	
+	compare(f_sanded, ∫f_sanded, l, r, m)
+end
+
+# ╔═╡ c87d6cad-dc8f-4691-8373-8394d401837d
+md"""# Wooded"""
+
+# ╔═╡ 6e850604-0bed-4df2-ae34-f09a5f914317
 function a_coeff(f::Function, L, n)
-	if n == 0
-        # a_0 = (1 / (2L)) ∫[−L, L] f(x) dx
-        return integrate(f, -L, L, M) / (2L)
-    else
-        # a_n = (1 / L) ∫[−L, L] f(x) * cos(nπx / L) dx
-        integrand(x) = f(x) * cos(n * π * x / L)
-        return integrate(integrand, -L, L, M) / L
-    end
+	ω = π / L    
+    return (1 / L) * integrate(x -> f(x) * cos(n * ω * x), -L, L, m)
 end
 
-# ╔═╡ fa788522-8a27-4b05-8267-53bf307c5d43
+# ╔═╡ 9ed5875c-fc3e-49e6-ac1f-4029114adfe4
 function b_coeff(f::Function, L, n)
-    # b_n = (1 / L) ∫[−L, L] f(x) * sin(nπx / L) dx
-    integrand(x) = f(x) * sin(n * π * x / L)
-    return integrate(integrand, -L, L, M) / L
+	ω = π / L 
+	return (1 / L) * integrate(x -> f(x) * sin(n * ω * x), -L, L, m)
 end
 
-# ╔═╡ 3656c4b9-8038-4fcf-83c3-d56b89c32dbc
+# ╔═╡ 8a3bf9c9-a1f3-4df0-b127-facecd10d839
 function fourier(f::Function, L, p, n)::Vector
-    # Generate p evenly spaced x-values in the range [-L, L]
-    x_values = range(-L, L, length=p)
-
-    # Calculate the Fourier coefficients a_n and b_n
-    a0 = a_coeff(f, L, 0)
-    a_values = [a_coeff(f, L, k) for k in 1:n]
-    b_values = [b_coeff(f, L, k) for k in 1:n]
-
-    # Compute the Fourier series approximation for each x-value
-    y_values = []
-    for x in x_values
-        # Fourier series sum
-        sum = a0
-        for k in 1:n
-            sum += a_values[k] * cos(k * π * x / L) + b_values[k] * sin(k * π * x / L)
+    x_values = range(-L, L; length=p)
+    a_0 = (1 / (2 * L)) * integrate(f, -L, L, m)
+    y_values = fill(a_0, p)
+    
+    ω = π / L
+    for k in 1:n
+        a_k, b_k = a_coeff(f, L, k), b_coeff(f, L, k)
+        for i in 1:p
+            x = x_values[i]
+            y_values[i] += a_k * cos(k * ω * x) + b_k * sin(k * ω * x)
         end
-        push!(y_values, sum)
     end
-
+    
     return y_values
 end
 
-# ╔═╡ 46b468d6-f14c-4501-9c7b-f7b3bbe9fb8b
+# ╔═╡ 2a47d529-4ae2-4cb9-a574-4a3dc8020749
 function fourier_plot(f::Function, L, p, n)
-    x_values = range(-L, L, length=p) |> collect
-    actual_y_values = [f(x) for x in x_values]
-    approx_y_values = fourier(f, L, p, n)
-
-    fourier_figure = Figure()
-    fourier_axis = Axis(
-        fourier_figure[1, 1],
-        title = "Fourier Series Approximation vs Actual Function",
-        xlabel = "x",
-        ylabel = "y"
+	x_values = range(-L, L; length=p)
+	
+	figure = Figure()
+    ax = Axis(figure[1, 1],
+        title = "Sketching My Nut Outline",
+        xlabel = "x with range [-$(L), $(L)]",
+        ylabel = "f(x) and fourier values"
     )
+	
+    scatter!(ax, x_values, fourier(f, L, p, n), color=:red)
+	scatter!(ax, x_values, [f(x) for x in x_values], color=:green)
+	figure
 
-    # Plot actual function
-    scatter!(fourier_axis, x_values, actual_y_values, label = "Actual Function", color = :blue)
-
-    # Plot Fourier series approximation
-    scatter!(fourier_axis, x_values, approx_y_values, label = "Fourier Approximation", color = :red)
-
-    # Add a legend
-    axislegend(fourier_axis, position = :rb)
-
-    return fourier_figure
+	# save("wooded.png", figure)
 end
 
+# ╔═╡ a4536f8b-4bd9-48cc-be94-486b8f9882cc
+@bind L PlutoUI.Slider(2:10)
 
-# ╔═╡ a1fe25e2-d700-4d88-825d-5940d9197145
-@bind L PlutoUI.Slider(2:10, show_value = true)
+# ╔═╡ f8740b8e-ec01-4572-bc33-e1db4a15a4c7
+md"""L = $(L)"""
 
-# ╔═╡ db3b3fa7-7e20-456c-b5d0-747a6ece3ca7
-@bind p PlutoUI.Slider(100:200,show_value = true)
+# ╔═╡ a018cd6f-81ad-452a-80a9-f8eb601e865c
+@bind p PlutoUI.Slider(100:200)
 
-# ╔═╡ 0a273292-8b2a-4655-bf88-805ff8ef6380
-@bind n PlutoUI.Slider(100:200,show_value = true)
+# ╔═╡ 6fd1b1ae-05df-4f46-a531-b16b93c1c3bd
+md"""p = $(p)"""
 
-# ╔═╡ b55cbf6d-e854-4cfc-aa9e-69c4c6d23a99
+# ╔═╡ 02e123e2-95f4-48be-94c1-7f9b5d532eed
+@bind n PlutoUI.Slider(100:200)
+
+# ╔═╡ 0a58644f-2c06-4140-a8a0-c75f8a26b7ea
+md"""n = $(n)"""
+
+# ╔═╡ bfca5423-78aa-4f03-97cd-8355ee8cba2f
 begin
-	f_fourier(x) = ℯ^(-(x+ℯ^(-x)))
-	fourier_fig = fourier_plot(f_fourier, L, p, n)
-	# save("wooded.png", fourier_fig)
-	fourier_fig
+	f_wooded(x) = exp(-(x + exp(-x)))
+	fourier_plot(f_wooded, L, p, n)
 end
 
-# ╔═╡ f04af2d0-b38e-4fae-a314-81f56bd86281
-md"# Lost Kingdom (80 Power Moons)"
+# ╔═╡ 0bde4922-fabb-4f0f-8c29-62162c4fb27a
+md"""# Lost"""
 
-# ╔═╡ d02be25d-d76b-4003-b58e-5b241c62e0b3
-md"Given the Cauchy-Euler differential equation,
+# ╔═╡ 52b001b5-d36f-4019-a9ab-52f7171a6b43
+md"Given the Cauchy-Euler differential equation
 ```math
-x^2y'' + axy' + by = -λy
+x^2y'' + axy' + by = -λy; (a-1))^2 < 4(b+λ); y(1)=1; y(e)=0
 ```
-where
-```math
-a,b, λ ∈ R
-```
-and
-```math
-(a - 1)^2 < 4(b + λ)
-```
-```math
-y(1) = 1
-```
-```math
-y(e) = 0
-```
-We have the auxiliary equation,
 ```math
 AE: r^2 + (a-1)r + (b+λ) = 0
 ```
-Solving for the roots,
+In quadratic formula,
 ```math
 r=\frac{-(a-1) ± \sqrt{(a-1)^2 - 4(b+λ)}}{2}
 ```
-Since we have the assumption that ``(a - 1)^2 < 4(b + λ)``, then we can skip to Case 3, where the determinant is negative, thus yielding complex roots. From ``r``, we get,
+Since $(a-1))^2 < 4(b+λ)$, then
+```math
+r = \frac{-(a-1)}{2} ± \frac{\sqrt{4(b+λ) - (a-1)^2}}{2}i
+```
+Where
 ```math
 α = \frac{-(a-1)}{2}, β = ± \frac{\sqrt{4(b+λ) - (a-1)^2}}{2}
 ```
-Our general solution is,
+Where the $±$ will mean two solutions. Thus, the equation will be as follows
 ```math
-y(x)=c_1x^αcos(βln(x))+c_2x^αsin(βln(x)).
+y = x^{\frac{-(a-1)}{2}}(c_1 \cos[±\frac{\sqrt{4(b+λ) - (a-1)^2}}{2}\ln x]  + c_2 \sin[±\frac{\sqrt{4(b+λ) - (a-1)^2}}{2} \ln x])
 ```
-For our first boundary condition, ``x=1``,
+By the initial boundary value, when $x = 1$
 ```math
-y(1)=1^α(c_1cos(0)+c_2sin(0))=c_1
+y(1) = c_1\cos0 +  c_2\sin0 = c_1 = 1
 ```
+and when $x = ℯ$
+
 ```math
-c_1 = 1
-```
-At our second boundary condition, ``x=e``,
-```math
-y(e)=e^α(cos(β)+c_2sin(β))=0.
+y(ℯ) = ℯ^{\frac{-(a-1)}{2}}(\cos[±\frac{\sqrt{4(b+λ) - (a-1)^2}}{2}]  + c_2 \sin[±\frac{\sqrt{4(b+λ) - (a-1)^2}}{2}])=0
 ```
 ```math
-c_2 = \frac{-cos(β)}{sin(β)} = -cot(β)
+→ \cos[±\frac{\sqrt{4(b+λ) - (a-1)^2}}{2}]  + c_2 \sin[± \frac{\sqrt{4(b+λ) - (a-1)^2}}{2}]=0
 ```
-Thus the two functions are derived from the general solution,
 ```math
-y(x)=x^α(cos(βln(x))−cot(β)sin(βln(x))).
+→ c_2 =-\frac{\cos[± \frac{\sqrt{4(b+λ) - (a-1)^2}}{2}]}{\sin[± \frac{\sqrt{4(b+λ) - (a-1)^2}}{2}]} = -\cot[± \frac{\sqrt{4(b+λ) - (a-1)^2}}{2}]
 ```
-where
+Which gives us the equation
 ```math
-α = \frac{-(a-1)}{2}, β = ± \frac{\sqrt{4(b+λ) - (a-1)^2}}{2}
+y = x^{\frac{-(a-1)}{2}}(\cos[±\frac{\sqrt{4(b+λ) - (a-1)^2}}{2}\ln x]-
+```
+```math
+\cot[±\frac{\sqrt{4(b+λ) - (a-1)^2}}{2}] \sin[±\frac{\sqrt{4(b+λ) - (a-1)^2}}{2} \ln x])
+```
+#### Hence our two functions are
+```math
+y = x^{\frac{-(a-1)}{2}}\cos[\frac{\sqrt{4(b+λ) - (a-1)^2}}{2}\ln x] - 
+```
+```math
+x^{\frac{-(a-1)}{2}}\cot[\frac{\sqrt{4(b+λ) - (a-1)^2}}{2}] \sin[\frac{\sqrt{4(b+λ) - (a-1)^2}}{2} \ln x])
+```
+and
+```math
+y = x^{\frac{-(a-1)}{2}}\cos[-\frac{\sqrt{4(b+λ) - (a-1)^2}}{2}\ln x] - 
+```
+```math
+x^{\frac{-(a-1)}{2}}\cot[-\frac{\sqrt{4(b+λ) - (a-1)^2}}{2}] \sin[-\frac{\sqrt{4(b+λ) - (a-1)^2}}{2} \ln x])
 ```
 "
 
-# ╔═╡ 74662185-ea67-40df-ab49-bc55dbebaa17
+# ╔═╡ 30487bcf-d201-4cd7-a94e-c0997d69d337
 function cauchy_euler(a, b, λ)::Tuple{Function, Function}
 	alpha = (-(a - 1)) / 2
 	beta = (sqrt(4 * (b + λ) - ((a - 1)^2))) / 2
 
-	# Two Functions
+	# Where the sign is positive
 	f1(x) = x^alpha * (cos(+beta * log(x)) - cot(+beta) * sin(+beta * log(x))) 
+
+	# Where the sign is negative
 	f2(x) = x^alpha * (cos(-beta * log(x)) - cot(-beta) * sin(-beta * log(x)))
 	return (f1, f2)
 end
 
-# ╔═╡ ec53c2d9-1f1a-42fd-838e-010f413258d1
+# ╔═╡ e66fbd5f-1c6f-4df4-96bb-ddd70e3bc64a
 function cauchy_euler_plot(a, b, λ)
-	x_values = range(1, ℯ, length=100)
+	x_values = range(1, ℯ; length=100)
 	f1, f2 = cauchy_euler(a, b, λ)
-	f1_y_values = [f1(x) for x in x_values]
-	f2_y_values = [f2(x) for x in x_values]
-    cauchy_figure = Figure()
-    cauchy_axis = Axis(
-        cauchy_figure[1, 1],
-        title = "Cauchy Euler Solutions",
-        xlabel = "x",
+	
+	figure = Figure()
+    ax = Axis(figure[1, 1],
+        title = "Cauchy Euler Equation: Plot of 2 Solution",
+        xlabel = "X values from 1 to ℯ",
         ylabel = "f(x)"
     )
-
-    scatter!(cauchy_axis, x_values, f1_y_values, label = "f1", color = :blue)
-    scatter!(cauchy_axis, x_values, f2_y_values, label = "f2", color = :red)
-
-    axislegend(cauchy_axis, position = :rb)
-
-    return cauchy_figure
+	
+    scatter!(ax, x_values, [f1(x) for x in x_values], color=:red)
+	scatter!(ax, x_values, [f2(x) for x in x_values], color=:green)
+	figure
 end
 
-# ╔═╡ a640d8fa-347d-4ad2-b7e7-48d23a77fed2
-@bind a PlutoUI.Slider(3:6, show_value = true)
+# ╔═╡ aea14c3a-5d5e-46eb-831a-d130d7b3915b
+@bind a PlutoUI.Slider(3:30)
 
-# ╔═╡ e913cc9a-adff-4728-b090-19ae617275a9
-@bind b PlutoUI.Slider(8:10, show_value = true)
+# ╔═╡ dfe4d3c3-cc77-4fb0-a5c5-8c1f75cf28d9
+md"""a = $(a)"""
 
-# ╔═╡ 316b4735-3820-4d3e-92e1-680b2f3a4fe9
-@bind λ PlutoUI.Slider(1:10, show_value = true)
+# ╔═╡ aa88d3e6-72ef-493a-a566-b60fae94d131
+@bind b PlutoUI.Slider(8:80)
 
-# ╔═╡ 7adabbb7-b8d4-4c12-b8ff-4e3d18a9c3a2
-begin
-	cauchy_euler_figure = cauchy_euler_plot(a,b,λ)
-	save("lost_a.png", cauchy_euler_figure)
-	cauchy_euler_figure
-end
+# ╔═╡ 95638ef0-8210-4f8f-b4b8-2fed9042f966
+md"""b = $(b)"""
 
-# ╔═╡ b02fa733-7888-45f6-a053-f896aeecb8bf
-md"## Sturm-Liouville Form"
+# ╔═╡ 6dc39545-91ec-47ea-b851-297b098a0117
+@bind λ PlutoUI.Slider(1:10)
 
-# ╔═╡ 3699babf-d34d-4d9b-a3dc-2fecce84483d
-md"
-A Sturm-Liouville Problem is of the form,
+# ╔═╡ 85e2f0b4-9ccc-4211-8de4-bf953a05ddda
+md"""λ = $(λ)"""
+
+# ╔═╡ 9ff008da-960f-459e-8a4b-1833edff767e
+cauchy_euler_plot(a, b, λ)
+
+# ╔═╡ ce40e211-a41d-4040-8a77-e3e8c626dfbb
+md"The Sturm-Liouville Form
 ```math
 (p(x)y')' + q(x)y = -λr(x)y
 ```
 ```math
-p(x)y'' + p'(x)y' + q(x)y = -λr(x)y
+→ y'' + \frac{p'}{p} y' + \frac{q}{p} y = -λ\frac rp y
 ```
-```math
-y'' + \frac{p'(x)}{p(x)} y' + \frac{q(x)}{p(x)} y = -λ\frac {r(x)}{p(x)} y
-```
-Given our differential equation, we can express it as follows,
-```math
-x^2y'' + axy' + by = -λy
-```
+Expressing the differential equation $x^2y'' + axy' + by = -λy$ to Sturm-Liouville form,
 ```math
 y'' + \frac axy' + \frac b{x^2}y = -λ\frac 1{x^2}y
 ```
-From this we obtain, 
+From the $y'$ term, we get $\frac{p'}{p} = \frac ax$. We integrate,
 ```math
-\frac{p'(x)}{p(x)} = \frac{a}{x}
-```
-By getting the definite integral of this, we get,
-```math
-∫\frac{p'(x)}{p(x)} dx = a ∫\frac 1x dx
+∫\frac{1}{p} dp = a ∫\frac 1x dx
 ```
 ```math
-ln(p(x)) = a ln(|x|)
+→ \ln p = a \ln x = \ln x^a
 ```
 ```math
-ln(p(x)) = ln(x^a)
+→ p = x^a
+```
+Multiplying $p$ back to the differential equation,
+```math
+[y'' + \frac axy' + \frac b{x^2}y = -λ\frac 1{x^2}y]x^a
 ```
 ```math
-p(x) = x^a
+x^ay'' + ax^{a-1}y' + bx^{a-2}y = -λx^{a-2}y
 ```
-It follows that,
+#### Hence our Sturm-Liouville Form is
 ```math
-\frac{q(x)}{p(x)} = \frac{b}{x^2} \Rightarrow q(x) = \frac{bx^a}{x^2} = bx^{a-2}
+((x^a)y')' + bx^{a-2}y = -λx^{a-2}y
 ```
+__________________________
+"
+
+# ╔═╡ ba94ce4e-d2a4-4f02-b532-434169d233e8
+md"Note that the 2 functions corresponding to the 2 solutions from the Cauchy-Euler different equation have the same result since $cos(βlnx)$ and $cot(βlnx)sin(βlnx)$ are even functions, meaning $f(-x) = f(x)$. Now, given the form above, then our $p(x)$ and $r(x)$ above is $x^a$ and $x^{a-2}$. The inner product $<u, v>_r$ on which the solutions are orthogonal would be
 ```math
-\frac {r(x)}{p(x)} = \frac{1}{x^2} \Rightarrow r(x) = \frac{x^a}{x^2} = x^{a-2}
-```
-Thus our Sturm-Liouville form is,
-```math
-(p(x)y')' + q(x)y = -λr(x)y
-```
-```math
-(x^ay')' + (bx^{a-2})y = -λ(x^{a-2})y
-```
-The inner product ``⟨ u, v ⟩_r`` on which the solutions are orthogonal would be
-```math
-⟨ u, v ⟩_r = ∫_a^bu(x)v(x)r(x)dx
+< x^{\frac{-(a-1)}{2}}\cos[\frac{\sqrt{4(b+λ) - (a-1)^2}}{2}\ln x] - 
 ```
 ```math
-⟨ u, v ⟩_r = ∫_a^bu(x)v(x)x^{a-2}dx
+x^{\frac{-(a-1)}{2}}\cot[\frac{\sqrt{4(b+λ) - (a-1)^2}}{2}] \sin[\frac{\sqrt{4(b+λ) - (a-1)^2}}{2} \ln x])
+```
+$=$
+```math
+∫^ℯ_1 f(x)x^{a-2} (x^{\frac{-(a-1)}{2}}\cos[\frac{\sqrt{4(b+λ) - (a-1)^2}}{2}\ln x] -
+```
+```math
+x^{\frac{-(a-1)}{2}}\cot[\frac{\sqrt{4(b+λ) - (a-1)^2}}{2}] \sin[\frac{\sqrt{4(b+λ) - (a-1)^2}}{2} \ln x])dx
 ```
 "
 
-
-# ╔═╡ d2a4b983-f848-4062-bf0f-e0d4f56aa8a0
-function verify_and_plot_orthogonality(a, b, λ)
-	x_values = range(1, ℯ, length=100)
-    y1, y2 = cauchy_euler(a, b, λ)
-    integrand(x) = y1(x) * y2(x) * x^(a-2)
-
-    inner_product = integrate(integrand, 1.0, exp(1), 100)
-
-    ortho_figure = Figure()
-    ortho_axis = Axis(ortho_figure[1, 1], 
-        title = "Function f(x) for Inner Product",
-        xlabel = "x",
+# ╔═╡ 78cf2d3a-dbde-4535-a2c0-a5892f25b1cd
+function lost_kingdom_plot(a, b, λ)
+	x_values = range(1, ℯ; length=100)
+	f1, f2 = cauchy_euler(a, b, λ)
+	f(x) = x^(a-2) * f2(x) * f1(x)
+	
+	figure = Figure()
+    ax = Axis(figure[1, 1],
+        title = "Function f from the inner product",
+        xlabel = "X values from 1 to ℯ",
         ylabel = "f(x)"
     )
-
-    f_values = [integrand(x) for x in x_values]
-    scatter!(ortho_axis, x_values, f_values, label = "f(x) = y1(x) * y2(x)", color = :blue)
-	return ortho_figure
+	
+    scatter!(ax, x_values, [f(x) for x in x_values], color=:blue)
+	figure
 end
 
-# ╔═╡ bf6ebd75-ba98-453f-9120-22abd4fd8c50
+# ╔═╡ 3bfdd891-6b30-4efd-bc32-68af9bda59f4
+lost_kingdom_plot(a, b, λ)
+
+# ╔═╡ b1fe24b5-8e89-438f-88b4-180fda306f19
 begin
-	ortho_figure = verify_and_plot_orthogonality(a,b,λ)
-	save("lost_b.png", ortho_figure)
-	ortho_figure
+	f1, f2 = cauchy_euler(a, b, λ)
+	integrate(x -> x^(a-2) * f2(x) * f1(x), 1, ℯ, m)
 end
 
-# ╔═╡ e763ea06-e7ee-4ce3-a67a-a4c364c7c36f
-md"# Snow Kingdom (50 Power Moons)"
+# ╔═╡ 48a16f84-19f2-40e6-ae10-c0a2127a71d1
+md"# Snow"
 
-# ╔═╡ b85556bf-6023-448b-b898-e4b02cb99616
+# ╔═╡ f75efffb-1c96-488a-99f4-be01e1a7e229
 function advection_u(t, x, c)
 	return x - c * t
+	# return ℯ^(c * t - x)
+	# return ℯ^(x - c * t)
 end
 
-# ╔═╡ 0e0eeda8-0146-41c7-93f2-17c9d44fa5ff
+# ╔═╡ e81b6607-96d1-4413-9d8d-f4ecd8bca413
 function advection_plot(ts::Vector, xs::Vector, c)
-    u_values = []
-
-    for t in ts
-        for x in xs
-            push!(u_values, advection_u(t, x, c))
-        end
-    end
-
-    advection_figure = Figure()
-    advection_ax = Axis3(
-		advection_figure[1, 1], 
-		title = "Advection Equation Plot", 
-		xlabel = "t", 
-		ylabel = "x", 
-		zlabel = "u(t, x)"
-	)
-
-    scatter!(
-		advection_ax,
-		repeat(ts, inner=length(xs)),
-		repeat(xs, outer=length(ts)),
-		u_values,
-		color = :blue
-	)
-
-    return advection_figure
+	combinations = [(t, x) for t in ts, x in xs]
+	u_coords = [advection_u(t, x, c) for (t, x) in combinations]
+	
+	
+	figure = Figure()
+    ax = Axis3(figure[1, 1],
+        title = "Gust of Wind Pattern",
+        xlabel = "t",
+        ylabel = "x",
+		zlabel = "u(x,t)"
+    )
+	
+    scatter!(ax, ts, xs, u_coords)
+	figure
 end
 
+# ╔═╡ a2b09e94-1626-4d3f-8554-ec589a0c7a3b
+@bind c PlutoUI.Slider(-1.38:0.01:1.38)
 
-# ╔═╡ 7db08d8a-8a56-4cb4-90c3-b0d7632788ff
-@bind c PlutoUI.Slider(1.38:0.01:1.40, show_value = true)
+# ╔═╡ 8e468e06-cd62-4973-98e5-f888ecfa658e
+md"""c = $(c)"""
 
-# ╔═╡ 7f684d81-b60b-45a4-a9ca-4b4554318fcb
+# ╔═╡ 7b832f8c-c15b-4ec9-93bc-f0d805d06517
 begin
 	ts::Vector = range(0, 1; length=100)
 	xs::Vector = range(0, 1; length=100)
-	advection_figure = advection_plot(ts, xs, c)
-	# save("snow.png",advection_figure)
-	advection_figure
+	advection_plot(ts, xs, c)
 end
 
-# ╔═╡ 881b82a8-44d5-4351-8f10-cee130d577ec
-md"# Bowser's Kingdom (70 Power Moons)"
+# ╔═╡ 98ab85bb-5759-4be5-ba21-4df2e2fe8f06
+md"# Bowser"
 
-# ╔═╡ 9c4efdcf-94e6-44a8-8745-8a6418c845e7
+# ╔═╡ 3cb83a2b-4d10-4b03-9e93-7224e825fb37
 function crank_nicolson_setup(Δx, nt, Δt)::Tuple{Matrix, Vector}
-    x_positions = 0:Δx:1 
-    nx = length(x_positions)
+    # Problem parameters
+    x_positions = 0:Δx:1  # Spatial grid
+    nx = length(x_positions)  # Number of spatial points
 
-    # Crank-Nicolson coefficient
-    α = Δt / (2 * Δx^2)
+    # Crank-Nicolson coefficients
+    r = Δt / (2 * Δx^2)
 
-    # Helper function to construct tridiagonal matrices
-    function tridiagonal_matrix(main_val, off_val, size)
-        main_diag = main_val * ones(size)
-        off_diag = off_val * ones(size - 1)
-        diagm(0 => main_diag, -1 => off_diag, 1 => off_diag)
-    end
-    # Constructing M and A
-    M = tridiagonal_matrix(1 + 2α, -α, nx)
-    A = tridiagonal_matrix(1 - 2α, α, nx)
-
-	# BCs for M
+    # Matrix M (Weight of u^{k+1})
+    M_main_diag = (1 + 2r) * ones(nx)
+    M_off_diag = -r * ones(nx - 1)
+    M = diagm(0 => M_main_diag, -1 => M_off_diag, 1 => M_off_diag)
     M[1, :] .= 0
-    M[1, 1] = 1
-    M[1, end] = -1
+	M[1, 1] = 1
+	M[1, end] = -1
     M[end, :] .= 0
-    M[end, end - 1] = 1
-    M[end, end] = -1
+	M[end, 1] = -1
+	M[end, 2] = 1
+    M[end, end-1] = 1
+	M[end, end] = -1
 
-	# BCs for A
-    A[1, :] .= 0
-    A[1, 1] = 1
+    # Matrix A (Weight of u^{k})
+	A_main_diag = (1 - 2r) * ones(nx)
+    A_off_diag = r * ones(nx - 1)
+    A = diagm(0 => A_main_diag, -1 => A_off_diag, 1 => A_off_diag)
+	A[1, :] .= 0
     A[end, :] .= 0
+    A[1, 1] = 1
     A[end, end] = 1
-
-    # Initial boundary vector ?
-    a = ones(nx)
-    a[1] = 0
-    a[end] = 0 
-
-    # Vector b
+	a = ones(nx)
+	a[1] = 0
+	a[end] = 0
     b = A * a
-
+	
     return M, b
 end
 
-# ╔═╡ ed056e28-16e4-403a-b025-7c97ab88f0e4
+# ╔═╡ 9a870c1b-bd66-47fd-b4b1-d9b34020fd16
 function crank_nicolson_plot(Δx, nt, Δt)
-    # Setup the Crank-Nicolson matrix M and initial vector b
-    M, b = crank_nicolson_setup(Δx, nt, Δt)
+	M, b = crank_nicolson_setup(Δx, nt, Δt)
 	u = M \ b
-
+	
 	x_coords = 0:Δx:1
 	t_coords = range(0, nt, length=length(u))
 	
-	crank_figure = Figure()
-    crank_axis = Axis3(crank_figure[1, 1],
-        title = "Heat Equation Solution with Crank-Nicolson",
-        xlabel = "t (time)",
-        ylabel = "x (space)",
-        zlabel = "u(t, x)"
+	figure = Figure()
+    ax = Axis3(figure[1, 1],
+        title = "Crank Nicolson Plot",
+        xlabel = "x",
+        ylabel = "t",
+		zlabel = "u(x,t)"
     )
 	
-    scatter!(crank_axis, t_coords, x_coords, u, color=:green)
-	return crank_figure
+    scatter!(ax, x_coords, t_coords, u, color=:green)
+	figure
 end
 
-# ╔═╡ 636df616-145b-4e4c-a53c-8f3bb985ce10
-@bind Δx PlutoUI.Slider(0.01:0.01:0.1, show_value = true)
+# ╔═╡ f70f86d7-c5d6-48c8-81ec-4efbe2dd2931
+@bind Δx PlutoUI.Slider(0.1:0.01:1)
 
-# ╔═╡ 9aad6ac0-13e5-4263-8303-ce4d3782444a
-@bind nt PlutoUI.Slider(25:1:100, show_value = true)
+# ╔═╡ 603e9739-3860-44c8-86cb-6b89ce9da407
+md"""Δx = $(Δx)"""
 
-# ╔═╡ 2873be9e-19da-4b45-84df-c2d920448dcd
-@bind Δt PlutoUI.Slider(1:0.1:2, show_value = true)
+# ╔═╡ bcdc9a59-8290-4879-b917-b33a66122bd5
+@bind nt PlutoUI.Slider(25:1:100)
 
-# ╔═╡ c4c0796e-2be4-401c-8f7a-6c2904d6a3be
+# ╔═╡ 3015ec2b-b69d-4285-a7fb-15ea24ed1973
+md"""nt = $(nt)"""
+
+# ╔═╡ 82c1ae37-fd28-4098-822d-77154b44970b
+@bind Δt PlutoUI.Slider(0.1:0.1:1)
+
+# ╔═╡ 92638b18-f6fa-44b2-84ec-5350fd046569
+md"""Δt = $(Δt)"""
+
+# ╔═╡ c9276b0d-58b2-42a2-895e-6bb01441bbd4
 begin
-	crank_figure = crank_nicolson_plot(Δx, nt, Δt)
-	# save("bowser.png", crank_figure)
-	crank_figure
+crank_nicolson_plot(Δx, nt, Δt)
+# crank_nicolson_setup(Δx, nt, Δt)
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -537,10 +488,6 @@ PLUTO_PROJECT_TOML_CONTENTS = """
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 PlutoUI = "7f904dfe-b85e-4ff6-b463-dae2292396a8"
-
-[compat]
-CairoMakie = "~0.12.13"
-PlutoUI = "~0.7.60"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -549,7 +496,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.11.0"
 manifest_format = "2.0"
-project_hash = "b1d7173578a4e52330f3042fa8e57c39ba68e320"
+project_hash = "e9445230703dd5a946b5a4f2ba480109387f884c"
 
 [[deps.AbstractFFTs]]
 deps = ["LinearAlgebra"]
@@ -659,9 +606,9 @@ version = "1.1.0"
 
 [[deps.CairoMakie]]
 deps = ["CRC32c", "Cairo", "Cairo_jll", "Colors", "FileIO", "FreeType", "GeometryBasics", "LinearAlgebra", "Makie", "PrecompileTools"]
-git-tree-sha1 = "2b04b60ed9d3e977f93e34952971b608c34b3401"
+git-tree-sha1 = "7947d2b61995eda7d5ca50c697b12bb578b918e5"
 uuid = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
-version = "0.12.13"
+version = "0.12.14"
 
 [[deps.Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
@@ -851,9 +798,9 @@ version = "3.3.10+1"
 
 [[deps.FileIO]]
 deps = ["Pkg", "Requires", "UUIDs"]
-git-tree-sha1 = "82d8afa92ecf4b52d78d869f038ebfb881267322"
+git-tree-sha1 = "62ca0547a14c57e98154423419d8a342dca75ca9"
 uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-version = "1.16.3"
+version = "1.16.4"
 
 [[deps.FilePaths]]
 deps = ["FilePathsBase", "MacroTools", "Reexport", "Requires"]
@@ -1136,9 +1083,9 @@ version = "1.0.0"
 
 [[deps.JLLWrappers]]
 deps = ["Artifacts", "Preferences"]
-git-tree-sha1 = "f389674c99bfcde17dc57454011aa44d5a260a40"
+git-tree-sha1 = "be3dc50a92e5a386872a493a10050136d4703f9b"
 uuid = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
-version = "1.6.0"
+version = "1.6.1"
 
 [[deps.JSON]]
 deps = ["Dates", "Mmap", "Parsers", "Unicode"]
@@ -1306,9 +1253,9 @@ version = "0.5.13"
 
 [[deps.Makie]]
 deps = ["Animations", "Base64", "CRC32c", "ColorBrewer", "ColorSchemes", "ColorTypes", "Colors", "Contour", "Dates", "DelaunayTriangulation", "Distributions", "DocStringExtensions", "Downloads", "FFMPEG_jll", "FileIO", "FilePaths", "FixedPointNumbers", "Format", "FreeType", "FreeTypeAbstraction", "GeometryBasics", "GridLayoutBase", "ImageBase", "ImageIO", "InteractiveUtils", "Interpolations", "IntervalSets", "Isoband", "KernelDensity", "LaTeXStrings", "LinearAlgebra", "MacroTools", "MakieCore", "Markdown", "MathTeXEngine", "Observables", "OffsetArrays", "Packing", "PlotUtils", "PolygonOps", "PrecompileTools", "Printf", "REPL", "Random", "RelocatableFolders", "Scratch", "ShaderAbstractions", "Showoff", "SignedDistanceFields", "SparseArrays", "Statistics", "StatsBase", "StatsFuns", "StructArrays", "TriplotBase", "UnicodeFun", "Unitful"]
-git-tree-sha1 = "50ebda951efaa11b6db0413c1128726b8eab3bf0"
+git-tree-sha1 = "3df66da15ba7b37b34f6557b7e1c95a3ff5c670b"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
-version = "0.21.13"
+version = "0.21.14"
 
 [[deps.MakieCore]]
 deps = ["ColorTypes", "GeometryBasics", "IntervalSets", "Observables"]
@@ -1826,9 +1773,9 @@ version = "1.11.0"
 
 [[deps.TiffImages]]
 deps = ["ColorTypes", "DataStructures", "DocStringExtensions", "FileIO", "FixedPointNumbers", "IndirectArrays", "Inflate", "Mmap", "OffsetArrays", "PkgVersion", "ProgressMeter", "SIMD", "UUIDs"]
-git-tree-sha1 = "bc7fd5c91041f44636b2c134041f7e5263ce58ae"
+git-tree-sha1 = "38f139cc4abf345dd4f22286ec000728d5e8e097"
 uuid = "731e570b-9d59-4bfa-96dc-6df516fadf69"
-version = "0.10.0"
+version = "0.10.2"
 
 [[deps.TranscodingStreams]]
 git-tree-sha1 = "0c45878dcfdcfa8480052b6ab162cdd138781742"
@@ -2027,46 +1974,57 @@ version = "3.6.0+0"
 """
 
 # ╔═╡ Cell order:
-# ╠═03164de8-2fbc-4c56-96e7-bd29008479e5
-# ╟─8bd03b29-c376-4740-8826-f21ef079b647
-# ╠═76ce79a0-b6df-11ef-07d2-f15cb7e9302d
-# ╟─a8629520-39c4-4e91-9249-a85d1d9f0dfb
-# ╠═7ee528e1-ee1f-4ce8-928d-1ee509df270c
-# ╠═35e65b09-fc17-456e-ab63-facf05b9b9cc
-# ╠═14a74ace-fd5a-43c5-9f15-15c39b26fd7e
-# ╠═d7dc5662-670a-4b04-a10f-2f1acd6ea222
-# ╠═e0cb8d94-4292-4c79-ac1b-e3342ef4594a
-# ╠═1eb6cdb6-f6bb-407b-a739-922147f571c1
-# ╠═fa788522-8a27-4b05-8267-53bf307c5d43
-# ╠═3656c4b9-8038-4fcf-83c3-d56b89c32dbc
-# ╠═46b468d6-f14c-4501-9c7b-f7b3bbe9fb8b
-# ╠═a1fe25e2-d700-4d88-825d-5940d9197145
-# ╠═db3b3fa7-7e20-456c-b5d0-747a6ece3ca7
-# ╠═0a273292-8b2a-4655-bf88-805ff8ef6380
-# ╠═b55cbf6d-e854-4cfc-aa9e-69c4c6d23a99
-# ╟─f04af2d0-b38e-4fae-a314-81f56bd86281
-# ╟─d02be25d-d76b-4003-b58e-5b241c62e0b3
-# ╠═74662185-ea67-40df-ab49-bc55dbebaa17
-# ╠═ec53c2d9-1f1a-42fd-838e-010f413258d1
-# ╠═7adabbb7-b8d4-4c12-b8ff-4e3d18a9c3a2
-# ╠═a640d8fa-347d-4ad2-b7e7-48d23a77fed2
-# ╠═e913cc9a-adff-4728-b090-19ae617275a9
-# ╠═316b4735-3820-4d3e-92e1-680b2f3a4fe9
-# ╟─b02fa733-7888-45f6-a053-f896aeecb8bf
-# ╟─3699babf-d34d-4d9b-a3dc-2fecce84483d
-# ╠═d2a4b983-f848-4062-bf0f-e0d4f56aa8a0
-# ╠═bf6ebd75-ba98-453f-9120-22abd4fd8c50
-# ╟─e763ea06-e7ee-4ce3-a67a-a4c364c7c36f
-# ╠═b85556bf-6023-448b-b898-e4b02cb99616
-# ╠═0e0eeda8-0146-41c7-93f2-17c9d44fa5ff
-# ╠═7db08d8a-8a56-4cb4-90c3-b0d7632788ff
-# ╠═7f684d81-b60b-45a4-a9ca-4b4554318fcb
-# ╟─881b82a8-44d5-4351-8f10-cee130d577ec
-# ╠═9c4efdcf-94e6-44a8-8745-8a6418c845e7
-# ╠═ed056e28-16e4-403a-b025-7c97ab88f0e4
-# ╠═c4c0796e-2be4-401c-8f7a-6c2904d6a3be
-# ╠═636df616-145b-4e4c-a53c-8f3bb985ce10
-# ╠═9aad6ac0-13e5-4263-8303-ce4d3782444a
-# ╠═2873be9e-19da-4b45-84df-c2d920448dcd
+# ╟─7e122e50-afaa-11ef-2b09-2b239697086a
+# ╟─3efb52be-0651-4bb9-8e5f-8f43145bff60
+# ╠═3e383d34-2da9-42b1-aeee-9e1058e8aac5
+# ╠═fafa91f1-ea6e-4f52-aaa3-17b5fc72a5cf
+# ╠═ae4814bf-53c7-47cd-b7b1-ab48cb84e13f
+# ╠═0196668b-4fee-460a-be9e-29e5a41e7faa
+# ╟─522781b6-2454-431f-9a72-88f80c2eba01
+# ╟─2e2f7959-bf38-4483-9fe8-7f5ef65e9ab4
+# ╟─c87d6cad-dc8f-4691-8373-8394d401837d
+# ╟─6e850604-0bed-4df2-ae34-f09a5f914317
+# ╟─9ed5875c-fc3e-49e6-ac1f-4029114adfe4
+# ╟─8a3bf9c9-a1f3-4df0-b127-facecd10d839
+# ╟─2a47d529-4ae2-4cb9-a574-4a3dc8020749
+# ╟─a4536f8b-4bd9-48cc-be94-486b8f9882cc
+# ╟─f8740b8e-ec01-4572-bc33-e1db4a15a4c7
+# ╟─a018cd6f-81ad-452a-80a9-f8eb601e865c
+# ╟─6fd1b1ae-05df-4f46-a531-b16b93c1c3bd
+# ╟─02e123e2-95f4-48be-94c1-7f9b5d532eed
+# ╟─0a58644f-2c06-4140-a8a0-c75f8a26b7ea
+# ╟─bfca5423-78aa-4f03-97cd-8355ee8cba2f
+# ╟─0bde4922-fabb-4f0f-8c29-62162c4fb27a
+# ╠═52b001b5-d36f-4019-a9ab-52f7171a6b43
+# ╟─30487bcf-d201-4cd7-a94e-c0997d69d337
+# ╟─e66fbd5f-1c6f-4df4-96bb-ddd70e3bc64a
+# ╟─aea14c3a-5d5e-46eb-831a-d130d7b3915b
+# ╟─dfe4d3c3-cc77-4fb0-a5c5-8c1f75cf28d9
+# ╟─aa88d3e6-72ef-493a-a566-b60fae94d131
+# ╟─95638ef0-8210-4f8f-b4b8-2fed9042f966
+# ╟─6dc39545-91ec-47ea-b851-297b098a0117
+# ╟─85e2f0b4-9ccc-4211-8de4-bf953a05ddda
+# ╠═9ff008da-960f-459e-8a4b-1833edff767e
+# ╠═ce40e211-a41d-4040-8a77-e3e8c626dfbb
+# ╠═ba94ce4e-d2a4-4f02-b532-434169d233e8
+# ╠═78cf2d3a-dbde-4535-a2c0-a5892f25b1cd
+# ╠═3bfdd891-6b30-4efd-bc32-68af9bda59f4
+# ╠═b1fe24b5-8e89-438f-88b4-180fda306f19
+# ╟─48a16f84-19f2-40e6-ae10-c0a2127a71d1
+# ╠═f75efffb-1c96-488a-99f4-be01e1a7e229
+# ╠═e81b6607-96d1-4413-9d8d-f4ecd8bca413
+# ╠═a2b09e94-1626-4d3f-8554-ec589a0c7a3b
+# ╟─8e468e06-cd62-4973-98e5-f888ecfa658e
+# ╠═7b832f8c-c15b-4ec9-93bc-f0d805d06517
+# ╟─98ab85bb-5759-4be5-ba21-4df2e2fe8f06
+# ╠═3cb83a2b-4d10-4b03-9e93-7224e825fb37
+# ╠═9a870c1b-bd66-47fd-b4b1-d9b34020fd16
+# ╠═f70f86d7-c5d6-48c8-81ec-4efbe2dd2931
+# ╟─603e9739-3860-44c8-86cb-6b89ce9da407
+# ╠═bcdc9a59-8290-4879-b917-b33a66122bd5
+# ╟─3015ec2b-b69d-4285-a7fb-15ea24ed1973
+# ╠═82c1ae37-fd28-4098-822d-77154b44970b
+# ╟─92638b18-f6fa-44b2-84ec-5350fd046569
+# ╠═c9276b0d-58b2-42a2-895e-6bb01441bbd4
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
